@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户认证系统 - Supabase</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 导航栏 -->
+        <nav class="navbar">
+            <div class="nav-brand">用户认证系统</div>
+            <div class="nav-links">
+                <span id="user-email" class="user-info"></span>
+                <button id="logout-btn" class="btn btn-secondary" style="display: none;">退出登录</button>
+            </div>
+        </nav>
+
+        <!-- 认证表单区域 -->
+        <div id="auth-section" class="auth-section">
+            <div class="auth-tabs">
+                <button class="tab-btn active" data-tab="login">登录</button>
+                <button class="tab-btn" data-tab="register">注册</button>
+            </div>
+
+            <!-- 登录表单 -->
+            <div id="login-form" class="auth-form active">
+                <h2>用户登录</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="login-email">邮箱地址</label>
+                        <input type="email" id="login-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">密码</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">登录</button>
+                </form>
+            </div>
+
+            <!-- 注册表单 -->
+            <div id="register-form" class="auth-form">
+                <h2>用户注册</h2>
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="register-email">邮箱地址</label>
+                        <input type="email" id="register-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">密码</label>
+                        <input type="password" id="register-password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm-password">确认密码</label>
+                        <input type="password" id="confirm-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">注册</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 用户管理区域 -->
+        <div id="user-section" class="user-section" style="display: none;">
+            <div class="user-profile">
+                <h2>用户信息</h2>
+                <div class="profile-card">
+                    <div class="profile-info">
+                        <p><strong>邮箱:</strong> <span id="profile-email"></span></p>
+                        <p><strong>用户ID:</strong> <span id="profile-id"></span></p>
+                        <p><strong>注册时间:</strong> <span id="profile-created"></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="user-actions">
+                <h3>账户操作</h3>
+                <div class="action-buttons">
+                    <button id="update-password-btn" class="btn btn-warning">修改密码</button>
+                    <button id="delete-account-btn" class="btn btn-danger">删除账户</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 消息提示 -->
+        <div id="message" class="message"></div>
+    </div>
+
+    <!-- 修改密码模态框 -->
+    <div id="password-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>修改密码</h3>
+            <form id="updatePasswordForm">
+                <div class="form-group">
+                    <label for="current-password">当前密码</label>
+                    <input type="password" id="current-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="new-password">新密码</label>
+                    <input type="password" id="new-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm-new-password">确认新密码</label>
+                    <input type="password" id="confirm-new-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">更新密码</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

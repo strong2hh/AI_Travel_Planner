@@ -8,6 +8,10 @@ class MapApp {
         this.config = null;
         this.recognition = null;
         this.isListening = false;
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        this.isRecording = false;
+        this.recordingTimer = null;
     }
 
     async init() {
@@ -219,6 +223,8 @@ class MapApp {
     initializeInputEvents() {
         const searchInput = document.getElementById('search-input');
         const voiceBtn = document.getElementById('voice-btn');
+        const voiceHint = document.getElementById('voice-hint');
+        const aiSearchBtn = document.getElementById('ai-search-btn');
         
         // 文本输入搜索
         searchInput.addEventListener('keypress', (e) => {
@@ -227,9 +233,63 @@ class MapApp {
             }
         });
         
-        // 语音按钮点击
-        voiceBtn.addEventListener('click', () => {
-            this.toggleSpeechRecognition();
+        // AI搜索按钮点击事件
+        aiSearchBtn.addEventListener('click', () => {
+            this.handleAiSearch();
+        });
+        
+        // 语音按钮长按事件
+        let pressTimer;
+        
+        // 开始按下
+        voiceBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            pressTimer = setTimeout(() => {
+                this.startRecording();
+            }, 200); // 200ms后开始录制
+        });
+        
+        // 松开按钮
+        voiceBtn.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            clearTimeout(pressTimer);
+            if (this.isRecording) {
+                this.stopRecording();
+            }
+        });
+        
+        // 触摸事件支持
+        voiceBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            pressTimer = setTimeout(() => {
+                this.startRecording();
+            }, 200);
+        });
+        
+        voiceBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            clearTimeout(pressTimer);
+            if (this.isRecording) {
+                this.stopRecording();
+            }
+        });
+        
+        // 鼠标悬停时显示提示
+        voiceBtn.addEventListener('mouseenter', () => {
+            if (!this.isRecording) {
+                voiceHint.classList.add('visible');
+            }
+        });
+        
+        voiceBtn.addEventListener('mouseleave', () => {
+            voiceHint.classList.remove('visible');
+        });
+        
+        // 防止离开页面时仍在录音
+        document.addEventListener('mouseleave', () => {
+            if (this.isRecording) {
+                this.stopRecording();
+            }
         });
     }
     
@@ -330,6 +390,91 @@ class MapApp {
         }
     }
     
+    // 处理AI搜索
+    async handleAiSearch() {
+        const searchInput = document.getElementById('search-input');
+        const query = searchInput.value.trim();
+        
+        if (!query) {
+            this.showError('请输入要搜索的内容');
+            return;
+        }
+        
+        console.log('AI搜索关键词:', query);
+        
+        // 显示加载状态
+        const aiBtn = document.getElementById('ai-search-btn');
+        aiBtn.classList.add('loading');
+        
+        try {
+            // 调用后端API
+            const response = await fetch('/api/ai/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query: query })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP错误! 状态码: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // 显示AI回复
+                this.showAiResponse(result.response);
+                this.showSuccess('AI回复获取成功');
+            } else {
+                this.showError('AI回复获取失败: ' + result.error);
+            }
+            
+        } catch (error) {
+            console.error('AI搜索失败:', error);
+            this.showError('AI搜索请求失败: ' + error.message);
+        } finally {
+            // 移除加载状态
+            aiBtn.classList.remove('loading');
+        }
+    }
+    
+    // 显示AI回复对话框
+    showAiResponse(response) {
+        // 检查是否已存在对话框
+        let dialog = document.getElementById('ai-response-dialog');
+        
+        if (!dialog) {
+            // 创建对话框
+            dialog = document.createElement('div');
+            dialog.id = 'ai-response-dialog';
+            dialog.className = 'ai-response-dialog';
+            
+            // 添加对话框结构
+            dialog.innerHTML = `
+                <div class="ai-response-header">
+                    <div class="ai-response-title">AI助手回复</div>
+                    <button class="ai-response-close">&times;</button>
+                </div>
+                <div class="ai-response-content"></div>
+            `;
+            
+            // 添加到页面
+            document.getElementById('container').appendChild(dialog);
+            
+            // 添加关闭事件
+            dialog.querySelector('.ai-response-close').addEventListener('click', () => {
+                dialog.classList.remove('visible');
+            });
+        }
+        
+        // 更新内容
+        dialog.querySelector('.ai-response-content').textContent = response;
+        
+        // 显示对话框
+        dialog.classList.add('visible');
+    }
+    
     // 清除所有标记
     clearMarkers() {
         this.markers.forEach(marker => {
@@ -342,6 +487,196 @@ class MapApp {
     showSuccess(message) {
         console.log('成功:', message);
         // 可以在这里添加更美观的提示效果
+    }
+    
+    // 开始录音
+    async startRecording() {
+        try {
+            // 请求麦克风权限，优化音频质量
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    sampleRate: 16000,
+                    channelCount: 1
+                } 
+            });
+            
+            // 检查音频轨道是否支持
+            const audioTracks = stream.getAudioTracks();
+            if (audioTracks.length === 0) {
+                throw new Error('无法获取音频轨道');
+            }
+            
+            console.log('音频轨道设置:', {
+                sampleRate: audioTracks[0].getSettings().sampleRate,
+                channelCount: audioTracks[0].getSettings().channelCount
+            });
+            
+            // 配置MediaRecorder，优先使用PCM格式
+            let options = {};
+            if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                options = {
+                    mimeType: 'audio/webm;codecs=opus',
+                    audioBitsPerSecond: 16000
+                };
+            } else {
+                options = {
+                    mimeType: 'audio/webm',
+                    audioBitsPerSecond: 16000
+                };
+            }
+            
+            this.mediaRecorder = new MediaRecorder(stream, options);
+            this.audioChunks = [];
+            
+            // 收录音频数据
+            this.mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    this.audioChunks.push(event.data);
+                    console.log('收到音频数据块:', event.data.size, '字节');
+                }
+            };
+            
+            // 录音停止后的处理
+            this.mediaRecorder.onstop = () => {
+                if (this.audioChunks.length > 0) {
+                    this.processAudioData();
+                } else {
+                    this.showError('录音数据为空，请重新录制');
+                    document.getElementById('search-input').placeholder = '输入目的地或语音搜索...';
+                }
+            };
+            
+            // 开始录音，设置时间片为100ms以获得更好的实时性
+            this.mediaRecorder.start(100);
+            this.isRecording = true;
+            
+            // 更新UI状态
+            document.getElementById('voice-btn').classList.add('listening');
+            document.getElementById('search-input').placeholder = '正在录音...请清晰说话';
+            document.getElementById('recording-indicator').style.display = 'block';
+            
+            // 开始计时
+            let seconds = 0;
+            this.recordingTimer = setInterval(() => {
+                seconds++;
+                const minutes = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                document.getElementById('recording-indicator').textContent = 
+                    `录音中: ${minutes}:${secs.toString().padStart(2, '0')}`;
+                
+                // 录音时长提示
+                if (seconds === 5) {
+                    this.showToast('请继续说话，录音将自动停止', 'info');
+                }
+            }, 1000);
+            
+            console.log('开始录音，使用配置:', options);
+            
+        } catch (error) {
+            console.error('录音启动失败:', error);
+            this.showError('无法访问麦克风: ' + error.message);
+            
+            // 提供详细的错误提示
+            if (error.name === 'NotAllowedError') {
+                this.showError('请允许麦克风权限');
+            } else if (error.name === 'NotFoundError') {
+                this.showError('未找到麦克风设备');
+            }
+        }
+    }
+    
+    // 停止录音
+    stopRecording() {
+        if (this.mediaRecorder && this.isRecording) {
+            this.mediaRecorder.stop();
+            this.isRecording = false;
+            
+            // 关闭媒体流
+            const tracks = this.mediaRecorder.stream.getTracks();
+            tracks.forEach(track => track.stop());
+            
+            // 清除计时器
+            if (this.recordingTimer) {
+                clearInterval(this.recordingTimer);
+                this.recordingTimer = null;
+            }
+            
+            // 更新UI状态
+            document.getElementById('voice-btn').classList.remove('listening');
+            document.getElementById('search-input').placeholder = '正在处理...';
+            document.getElementById('recording-indicator').style.display = 'none';
+            
+            console.log('停止录音');
+        }
+    }
+    
+    // 处理音频数据
+    async processAudioData() {
+        if (this.audioChunks.length === 0) {
+            this.showError('录音数据为空');
+            return;
+        }
+        
+        try {
+            // 创建音频Blob
+            const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+            
+            // 创建FormData
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'recording.webm');
+            
+            // 显示处理状态
+            document.getElementById('search-input').placeholder = '正在识别语音...';
+            
+            // 调用后端API进行语音识别
+            const response = await fetch('/api/voice-recognition', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP错误! 状态码: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // 将识别结果放入输入框
+                document.getElementById('search-input').value = result.text;
+                
+                // 自动触发搜索
+                this.handleSearch(result.text);
+                
+                this.showSuccess(`语音识别成功: ${result.text}`);
+            } else {
+                this.showError('语音识别失败: ' + result.error);
+                
+                // 如果是配置问题，显示更详细的提示
+                if (result.error && result.error.includes('未配置')) {
+                    this.showError('请检查后端语音服务配置：VOICE_API_KEY, VOICE_APP_ID');
+                }
+            }
+            
+            // 重置输入框提示
+            document.getElementById('search-input').placeholder = '输入目的地或语音搜索...';
+            
+        } catch (error) {
+            console.error('语音识别失败:', error);
+            
+            // 网络错误处理
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                this.showError('网络连接失败，请检查网络连接');
+            } else if (error.message.includes('HTTP错误')) {
+                this.showError('服务器错误: ' + error.message);
+            } else {
+                this.showError('语音识别请求失败: ' + error.message);
+            }
+            
+            document.getElementById('search-input').placeholder = '输入目的地或语音搜索...';
+        }
     }
 
     addMarker(position, info = {}) {
@@ -370,7 +705,51 @@ class MapApp {
     }
 
     showError(message) {
-        alert(message);
+        this.showToast(message, 'error');
+    }
+    
+    showSuccess(message) {
+        this.showToast(message, 'success');
+    }
+    
+    // 显示提示信息
+    showToast(message, type = 'error') {
+        // 移除现有的提示
+        this.removeExistingToasts();
+        
+        // 创建新的提示元素
+        const toast = document.createElement('div');
+        toast.className = `${type}-toast`;
+        toast.textContent = message;
+        
+        // 添加到容器
+        document.getElementById('toast-container').appendChild(toast);
+        
+        // 触发显示动画
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 10);
+        
+        // 3秒后自动消失
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, 3000);
+    }
+    
+    // 移除现有的提示
+    removeExistingToasts() {
+        const container = document.getElementById('toast-container');
+        const existingToasts = container.querySelectorAll('.error-toast, .success-toast');
+        existingToasts.forEach(toast => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        });
     }
 }
 

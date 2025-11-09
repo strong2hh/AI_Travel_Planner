@@ -1,36 +1,37 @@
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# 忽略配置文件（API密钥等敏感信息）
+src/main/resources/application-iflytek.yml
+src/main/resources/application.properties
+**/*iflytek*.yml
+**/*iflytek*.properties
+**/*api-key*.yml
+**/*api-key*.properties
 
-# 配置文件忽略
-src/main/resources/map.properties
+# 但是保留示例文件（以.example结尾）
+!**/*.example
 
-### STS ###
-.apt_generated
+# 标准Java项目忽略规则
 .classpath
-.factorypath
 .project
-.settings
-.springBeans
-.sts4-cache
+.settings/
+bin/
+build/
+target/
 
-### IntelliJ IDEA ###
-.idea
-*.iws
+# 日志文件
+*.log
+logs/
+
+# 依赖文件
+*.jar
+*.war
+*.ear
+
+# IDE文件
+.idea/
 *.iml
 *.ipr
+*.iws
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
+# 系统文件
+.DS_Store
+Thumbs.db

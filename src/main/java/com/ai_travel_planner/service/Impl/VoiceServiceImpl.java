@@ -3,6 +3,8 @@ package com.ai_travel_planner.service.Impl;
 import com.ai_travel_planner.service.VoiceRecognitionService;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.InitializingBean;
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -29,10 +31,42 @@ import com.ai_travel_planner.utils.AudioConverter;
  */
 @Slf4j
 @Service
-public class VoiceServiceImpl implements VoiceRecognitionService {
+public class VoiceServiceImpl implements VoiceRecognitionService, InitializingBean {
     
     // 音频转换器实例
     private final AudioConverter audioConverter = new AudioConverter();
+    
+    // 科大讯飞API配置
+    @Value("${iflytek.voice.app-id}")
+    private String appId;
+    
+    @Value("${iflytek.voice.api-key}")
+    private String apiKey;
+    
+    @Value("${iflytek.voice.api-secret}")
+    private String apiSecret;
+    
+    // 实现InitializingBean接口的afterPropertiesSet方法
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        log.info("科大讯飞语音服务初始化");
+        log.info("AppId: {}", appId);
+        log.info("ApiKey: {}", apiKey != null ? apiKey.substring(0, Math.min(10, apiKey.length())) + "..." : "null");
+        log.info("ApiSecret: {}", apiSecret != null ? "***已配置***" : "null");
+    }
+    
+    // 用于测试的getter方法
+    public String getAppId() {
+        return appId;
+    }
+    
+    public String getApiKey() {
+        return apiKey;
+    }
+    
+    public String getApiSecret() {
+        return apiSecret;
+    }
 
     // 语音听写WebSocket接口（推荐使用中英文版本）
     private static final String WS_URL = "wss://iat-api.xfyun.cn/v2/iat";
@@ -53,23 +87,17 @@ public class VoiceServiceImpl implements VoiceRecognitionService {
 
     @Override
     public String realTimeVoiceTranscription(InputStream audioStream) {
-        // 从YAML配置文件读取三个核心参数
-        Map<String, Object> config = loadVoiceConfigFromYaml();
-        String apiKey = getConfigValue(config, "iflytek.voice.api-key");
-        String apiSecret = getConfigValue(config, "iflytek.voice.api-secret");
-        String appId = getConfigValue(config, "iflytek.voice.app-id");
-
         // 校验配置文件
         if (apiKey == null || apiKey.isEmpty()) {
-            log.info("请配置YAML文件中的api-key");
+            log.info("请配置application.properties中的api-key");
             return "";
         }
         if (apiSecret == null || apiSecret.isEmpty()) {
-            log.info("请配置YAML文件中的api-secret");
+            log.info("请配置application.properties中的api-secret");
             return "";
         }
         if (appId == null || appId.isEmpty()) {
-            log.info("请配置YAML文件中的app-id");
+            log.info("请配置application.properties中的app-id");
             return "";
         }
 
@@ -1478,23 +1506,17 @@ public class VoiceServiceImpl implements VoiceRecognitionService {
         try {
             System.out.println("=== 开始测试M4A文件: " + filePath + " ===");
             
-            // 从YAML配置文件读取三个核心参数
-            Map<String, Object> config = loadVoiceConfigFromYaml();
-            String apiKey = getConfigValue(config, "iflytek.voice.api-key");
-            String apiSecret = getConfigValue(config, "iflytek.voice.api-secret");
-            String appId = getConfigValue(config, "iflytek.voice.app-id");
-
             // 校验配置文件
             if (apiKey == null || apiKey.isEmpty()) {
-                log.info("请配置YAML文件中的api-key");
+                log.info("请配置application.properties中的api-key");
                 return "";
             }
             if (apiSecret == null || apiSecret.isEmpty()) {
-                log.info("请配置YAML文件中的api-secret");
+                log.info("请配置application.properties中的api-secret");
                 return "";
             }
             if (appId == null || appId.isEmpty()) {
-                log.info("请配置YAML文件中的app-id");
+                log.info("请配置application.properties中的app-id");
                 return "";
             }
             

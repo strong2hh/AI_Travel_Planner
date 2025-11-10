@@ -1326,7 +1326,116 @@ class ScheduleManager {
             this.switchDay(event.target.value);
         });
         
+        // 初始化时如果没有天数选项，生成默认选项
+        if (daySelect.options.length <= 3) { // 只有默认的3天选项
+            this.generateDayOptions();
+        }
+        
         console.log('行程安排功能初始化完成');
+    }
+    
+    // 根据行程数据动态生成天数下拉选项
+    generateDayOptions() {
+        const daySelect = document.getElementById('day-select');
+        
+        // 清空现有选项
+        daySelect.innerHTML = '';
+        
+        // 获取天数，如果scheduleData中没有天数信息，则尝试从数据结构推断
+        let dayCount = 0;
+        
+        // 优先使用scheduleData中的days字段
+        if (this.scheduleData && typeof this.scheduleData.days === 'number') {
+            dayCount = this.scheduleData.days;
+        } 
+        // 如果没有days字段，尝试计算实际的天数
+        else if (this.scheduleData) {
+            // 查找以"day"开头的字段数量
+            const dayKeys = Object.keys(this.scheduleData).filter(key => key.startsWith('day') && !isNaN(key.replace('day', '')));
+            dayCount = dayKeys.length > 0 ? dayKeys.length : 3; // 默认至少3天
+        }
+        
+        // 生成天数选项和对应的日程面板
+        for (let i = 1; i <= dayCount; i++) {
+            // 添加下拉选项
+            const option = document.createElement('option');
+            option.value = `day${i}`;
+            option.textContent = `第${i}天`;
+            daySelect.appendChild(option);
+            
+            // 检查是否已有对应的日程面板，如果没有则创建
+            const existingPanel = document.getElementById(`day${i}-schedule`);
+            if (!existingPanel) {
+                this.createDaySchedulePanel(i);
+            }
+        }
+        
+        console.log(`已生成${dayCount}天的下拉选项和日程面板`);
+        
+        // 如果有行程数据，触发第一天显示
+        if (dayCount > 0) {
+            this.switchDay('day1');
+        }
+    }
+    
+    // 创建日程面板
+    createDaySchedulePanel(dayNumber) {
+        const scheduleContent = document.querySelector('.schedule-content');
+        if (!scheduleContent) return;
+        
+        // 创建新的日程面板
+        const daySchedule = document.createElement('div');
+        daySchedule.id = `day${dayNumber}-schedule`;
+        daySchedule.className = 'day-schedule';
+        
+        // 添加标题
+        const title = document.createElement('h4');
+        title.textContent = `第${dayNumber}天行程安排`;
+        daySchedule.appendChild(title);
+        
+        // 添加行程列表容器
+        const scheduleList = document.createElement('div');
+        scheduleList.className = 'schedule-list';
+        
+        // 添加占位内容，表示暂无行程
+        if (this.scheduleData && this.scheduleData[`day${dayNumber}`]) {
+            // 如果有数据，使用数据创建行程项
+            const dayData = this.scheduleData[`day${dayNumber}`];
+            dayData.forEach(item => {
+                const scheduleItem = document.createElement('div');
+                scheduleItem.className = 'schedule-item';
+                
+                const time = document.createElement('div');
+                time.className = 'time';
+                time.textContent = item.time || '待定';
+                
+                const place = document.createElement('div');
+                place.className = 'place';
+                place.textContent = item.place || '待定';
+                
+                const description = document.createElement('div');
+                description.className = 'description';
+                description.textContent = item.description || '暂无描述';
+                
+                scheduleItem.appendChild(time);
+                scheduleItem.appendChild(place);
+                scheduleItem.appendChild(description);
+                scheduleList.appendChild(scheduleItem);
+            });
+        } else {
+            // 如果没有数据，添加占位文本
+            const placeholder = document.createElement('div');
+            placeholder.style.textAlign = 'center';
+            placeholder.style.color = '#999';
+            placeholder.style.padding = '20px';
+            placeholder.textContent = `第${dayNumber}天暂无行程安排`;
+            scheduleList.appendChild(placeholder);
+        }
+        
+        daySchedule.appendChild(scheduleList);
+        scheduleContent.appendChild(daySchedule);
+        
+        console.log(`已创建第${dayNumber}天的日程面板`);
     }
     
     switchDay(day) {
@@ -1462,6 +1571,9 @@ class ScheduleManager {
             this.scheduleData = result.data;
             console.log('从后端加载行程数据成功');
             
+            // 动态生成天数下拉选项
+            this.generateDayOptions();
+            
         } catch (error) {
             console.error('行程数据加载失败:', error);
             
@@ -1543,6 +1655,9 @@ class ScheduleManager {
             this.scheduleData = result.data;
             console.log('从后端加载行程数据成功');
             
+            // 动态生成天数下拉选项
+            this.generateDayOptions();
+            
         } catch (error) {
             console.error('行程数据加载失败:', error);
             
@@ -1604,6 +1719,9 @@ class ScheduleManager {
     updateScheduleData(newData) {
         // 合并新的行程数据
         this.scheduleData = { ...this.scheduleData, ...newData };
+        
+        // 重新生成天数下拉选项
+        this.generateDayOptions();
         
         // 更新UI显示
         this.updateScheduleUI();

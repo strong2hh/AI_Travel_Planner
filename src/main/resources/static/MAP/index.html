@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI旅行规划 - 地图界面</title>
     <link rel="stylesheet" href="/static/MAP/style.css">
+    <!-- 尝试多个Supabase CDN源 -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        // 如果主CDN失败，尝试备用源
+        if (!window.supabase) {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+            document.head.appendChild(script);
+        }
+    </script>
 </head>
 <body>
     <div id="container">
@@ -123,6 +133,7 @@
     </div>
     
     <!-- 地图API将由JavaScript动态加载 -->
+    <script src="/static/MAP/auth-check.js"></script>
     <script src="/static/MAP/map.js"></script>
 </body>
 </html>

@@ -65,7 +65,6 @@ class MapApp {
             
             // 输出获取到的配置信息，用于调试
             console.log('=== 地图配置信息 ===');
-            console.log('API密钥:', configData.apiKey ? configData.apiKey.substring(0, 8) + '...' : '未配置');
             console.log('中心点:', configData.center);
             console.log('缩放级别:', configData.zoom);
             console.log('地图样式:', configData.style);
@@ -78,6 +77,7 @@ class MapApp {
             // 转换配置格式以匹配原有结构
             const config = {
                 apiKey: configData.apiKey || 'YOUR_API_KEY',
+                securityJsCode: configData.securityJsCode || null, // 添加安全密钥
                 center: configData.center || '116.397428,39.90923',
                 zoom: configData.zoom || '12',
                 style: configData.style || 'normal',
@@ -117,7 +117,6 @@ class MapApp {
 
             // 确保API密钥有效
             const apiKey = this.config.apiKey;
-            console.log('使用的API密钥:', apiKey ? apiKey.substring(0, 8) + '...' : '未配置');
             
             // 检查是否为默认密钥或未配置
             if (!apiKey || apiKey === 'YOUR_API_KEY') {
@@ -126,9 +125,19 @@ class MapApp {
                 this.showError('地图API密钥未配置，请检查application.properties中的amap.api-key设置');
             }
 
+            // 获取安全密钥
+            const securityJsCode = this.config.securityJsCode;
+            
             // 构建API URL，使用更稳定的版本和参数
             const apiUrl = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}&plugin=AMap.Geolocation,AMap.Geocoder,AMap.ToolBar,AMap.Scale`;
             console.log('📡 加载API URL:', apiUrl);
+            
+            // 设置安全密钥
+            if (securityJsCode) {
+                window._AMapSecurityConfig = {
+                    securityJsCode: securityJsCode
+                };
+            }
             
             const script = document.createElement('script');
             script.src = apiUrl;
@@ -516,9 +525,24 @@ class MapApp {
             const result = await response.json();
             
             if (result.success) {
-                // 显示AI回复
-                this.showAiResponse(result.response);
-                this.showSuccess('AI回复获取成功');
+                // 处理ContentSplit后的结构化日程数据
+                if (result.scheduleData && Object.keys(result.scheduleData).length > 0) {
+                    // 更新行程管理器数据
+                    if (window.scheduleManager) {
+                        window.scheduleManager.updateScheduleData(result.scheduleData);
+                    }
+                    
+                    // 显示成功消息
+                    this.showSuccess(`AI生成${result.dayCount}天行程，共${result.totalItems}个景点`);
+                    
+                    // 可选：显示原始AI回复（用于调试）
+                    if (result.originalResponse) {
+                        this.showAiResponse(result.originalResponse);
+                    }
+                } else {
+                    // 如果没有结构化数据，显示原始回复
+                    this.showAiResponse(result.originalResponse || result.response);
+                }
             } else {
                 this.showError('AI回复获取失败: ' + result.error);
             }
@@ -846,9 +870,852 @@ class MapApp {
     }
 }
 
+// 路径规划功能类
+class RoutePlanner {
+    constructor(mapApp) {
+        this.mapApp = mapApp;
+        this.routePolyline = null;
+        this.routeMarkers = [];
+        this.config = null; // 初始化配置对象
+        this.initializeRoutePanel();
+    }
+    
+    // 初始化路径规划面板
+    initializeRoutePanel() {
+        // 检查是否已存在面板
+        let panel = document.getElementById('route-plan-panel');
+        
+        if (!panel) {
+            // 创建路径规划面板
+            panel = document.createElement('div');
+            panel.id = 'route-plan-panel';
+            panel.className = 'route-plan-panel';
+            
+            panel.innerHTML = `
+                <div class="route-plan-header">
+                    <div class="route-plan-title">路线规划</div>
+                    <button class="route-plan-close">&times;</button>
+                </div>
+                <div class="route-plan-content">
+                    <div class="route-plan-section">
+                        <div class="route-plan-section-title">
+                            <span>📍</span> 路线信息
+                        </div>
+                        <div id="route-info" class="route-plan-info">
+                            点击相邻地点之间的箭头查看路线规划
+                        </div>
+                    </div>
+                    <div class="route-plan-section">
+                        <div class="route-plan-section-title">
+                            <span>🚗</span> 导航步骤
+                        </div>
+                        <div id="route-steps" class="route-plan-steps">
+                            <div class="route-plan-step">
+                                <span class="route-plan-step-icon">👉</span>
+                                <span class="route-plan-step-text">请选择路线查看详细导航指引</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 添加到页面
+            document.getElementById('container').appendChild(panel);
+            
+            // 添加关闭事件
+            panel.querySelector('.route-plan-close').addEventListener('click', () => {
+                this.hideRoutePanel();
+            });
+        }
+    }
+    
+    // 显示路径规划面板
+    showRoutePanel() {
+        const panel = document.getElementById('route-plan-panel');
+        if (panel) {
+            panel.classList.add('visible');
+        }
+    }
+    
+    // 隐藏路径规划面板
+    hideRoutePanel() {
+        const panel = document.getElementById('route-plan-panel');
+        if (panel) {
+            panel.classList.remove('visible');
+        }
+        this.clearRoute();
+    }
+    
+    // 清除路线
+    clearRoute() {
+        // 清除地图上的路线
+        if (this.routePolyline) {
+            this.routePolyline.setMap(null);
+            this.routePolyline = null;
+        }
+        
+        // 清除路线标记
+        this.routeMarkers.forEach(marker => {
+            if (marker && marker.setMap) {
+                marker.setMap(null);
+            }
+        });
+        this.routeMarkers = [];
+        
+        // 清除所有可能的路线覆盖物（包括driving对象创建的）
+        if (this.mapApp && this.mapApp.map && this.mapApp.map.getAllOverlays) {
+            const overlays = this.mapApp.map.getAllOverlays();
+            overlays.forEach(overlay => {
+                // 检查是否是路径相关的覆盖物
+                if (overlay.CLASS_NAME && (
+                    overlay.CLASS_NAME.includes('Polyline') || 
+                    overlay.CLASS_NAME.includes('Marker')
+                )) {
+                    this.mapApp.map.remove(overlay);
+                }
+            });
+        }
+    }
+    
+    // 规划路线
+    async planRoute(startPlace, endPlace) {
+        try {
+            // 先清除上一条路线的痕迹
+            this.clearRoute();
+            
+            // 显示加载状态
+            this.updateRouteInfo('正在规划路线...', true);
+            
+            console.log('🚗 开始路径规划，直接使用地址:', {
+                start: startPlace,
+                end: endPlace
+            });
+            
+            // 检查AMap是否可用
+            if (!window.AMap) {
+                throw new Error('高德地图API未加载，请检查网络连接和API密钥配置');
+            }
+            
+            // 动态加载路径规划插件
+            if (!window.AMap.Driving) {
+                console.log('🚗 正在加载路径规划插件...');
+                await this.loadDrivingPlugin();
+            }
+            
+            if (window.AMap.Driving) {
+                // 按照官方示例使用AMap.plugin加载
+                await new Promise((resolve, reject) => {
+                    AMap.plugin("AMap.Driving", () => {
+                        const driving = new AMap.Driving({
+                            map: null, // 不绑定到地图，手动控制显示
+                            policy: 0, // 使用官方示例的policy: 0 (速度优先)
+                            showTraffic: true, // 显示实时路况
+                            hideMarkers: true // 隐藏标记点，由我们自己控制显示
+                        });
+                        
+
+                        
+                        // 保存this引用，以便在回调函数中使用
+                        const self = this;
+                        
+                        // 从地址后面的括号中提取城市信息，例如"西湖（杭州）" -> "杭州"
+                        function extractCityFromAddress(address) {
+                            // 匹配格式：地址（城市）或地址(city)
+                            const match = address.match(/（([^）]+)）|\(([^)]+)\)/);
+                            if (match) {
+                                // 如果找到括号内的城市，返回括号内的内容
+                                return match[1] || match[2];
+                            }
+                            
+                            // 默认返回空字符串，让高德地图自行判断
+                            return "";
+                        }
+                        
+                        // 按照官方示例格式，使用包含keyword和city的对象数组
+                        const points = [
+                            { keyword: startPlace, city: extractCityFromAddress(startPlace) }, // 起始点
+                            { keyword: endPlace, city: extractCityFromAddress(endPlace) }   // 终点
+                        ];
+                        
+                        driving.search(points, function (status, result) {
+                        console.log('路径规划返回结果:', { status, result });
+                        
+                        if (status === 'complete') {
+                            if (result.routes && result.routes.length > 0) {
+                                const route = result.routes[0];
+                                console.log('✅ 路径规划成功:', { 
+                                    distance: route.distance, 
+                                    time: route.time,
+                                    steps: route.steps ? route.steps.length : 0
+                                });
+                                self.displayRouteResult(route, startPlace, endPlace);
+                                resolve(route);
+                            } else {
+                                reject(new Error('未找到可行路线，请检查地点名称是否正确'));
+                            }
+                        } else if (status === 'error') {
+                            console.error('❌ 路径规划错误:', result);
+                            let errorMsg = '路径规划服务暂时不可用';
+                            if (result && result.info) {
+                                if (result.info.includes('INVALID_USER_KEY') || result.info.includes('KEY')) {
+                                    errorMsg = 'API密钥配置问题，请检查密钥权限';
+                                } else if (result.info.includes('QUOTA')) {
+                                    errorMsg = 'API调用次数超限，请稍后重试';
+                                } else {
+                                    errorMsg = result.info;
+                                }
+                            }
+                            reject(new Error(errorMsg));
+                        } else {
+                            console.log('⚠️ 路径规划状态异常:', status);
+                            reject(new Error('路径规划失败，状态: ' + status));
+                        }
+                    });
+                    });
+                });
+                
+            } else {
+                throw new Error('路径规划插件加载失败，请刷新页面重试');
+            }
+            
+        } catch (error) {
+            console.error('路径规划失败:', error);
+            
+            // 提供更友好的错误信息
+            let errorMessage = '路径规划失败';
+            if (error.message.includes('地址坐标转换失败')) {
+                errorMessage = '无法获取地点坐标，请检查地点名称是否正确';
+            } else if (error.message.includes('网络连接')) {
+                errorMessage = '网络连接问题，请检查网络后重试';
+            } else if (error.message.includes('API密钥')) {
+                errorMessage = '地图服务配置问题，请联系管理员';
+            } else {
+                errorMessage = error.message;
+            }
+            
+            this.updateRouteInfo(errorMessage, false);
+        }
+    }
+    
+    // 调用geocoding服务将地址转换为经纬度
+
+    
+    // 动态加载路径规划插件
+    loadDrivingPlugin() {
+        return new Promise((resolve, reject) => {
+            // 检查是否已经加载了插件
+            if (window.AMap && window.AMap.Driving) {
+                resolve();
+                return;
+            }
+            
+            // 获取API密钥和安全密钥
+            const apiKey = this.mapApp.config?.apiKey || 'YOUR_API_KEY';
+            const securityJsCode = this.mapApp.config?.securityJsCode;
+            
+
+            
+            // 如果API密钥无效，直接返回错误
+            if (!apiKey || apiKey === 'YOUR_API_KEY') {
+                reject(new Error('请配置有效的高德地图API密钥'));
+                return;
+            }
+            
+            // 设置安全密钥（对于路径规划插件也必须设置）
+            if (securityJsCode) {
+                window._AMapSecurityConfig = {
+                    securityJsCode: securityJsCode
+                };
+            }
+            
+            // 使用官方推荐的AMap.plugin方式加载
+            AMap.plugin("AMap.Driving", () => {
+                console.log('✅ 路径规划插件加载成功');
+                
+                // 等待AMap.Driving可用
+                let attempts = 0;
+                const maxAttempts = 50;
+                const interval = setInterval(() => {
+                    attempts++;
+                    if (window.AMap && window.AMap.Driving) {
+                        clearInterval(interval);
+                        resolve();
+                        return;
+                    }
+                    
+                    if (attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        reject(new Error('路径规划插件加载超时'));
+                    }
+                }, 100);
+            });
+        });
+    }
+    
+    // 显示路线规划结果
+    displayRouteResult(route, startPlace, endPlace) {
+        const distance = (route.distance / 1000).toFixed(1); // 公里
+        const duration = Math.round(route.time / 60); // 分钟
+        
+        // 在地图上绘制路线
+        this.drawRouteOnMap(route);
+        
+        // 更新路线信息
+        const routeInfo = `
+            <strong>${startPlace}</strong> → <strong>${endPlace}</strong><br>
+            距离: ${distance}公里 | 时间: ${duration}分钟<br>
+            费用: ${route.taxi_cost ? route.taxi_cost + '元' : '待计算'}
+        `;
+        
+        document.getElementById('route-info').innerHTML = routeInfo;
+        
+        // 显示导航步骤
+        const stepsContainer = document.getElementById('route-steps');
+        stepsContainer.innerHTML = '';
+        
+        if (route.steps && route.steps.length > 0) {
+            route.steps.forEach((step, index) => {
+                const stepDiv = document.createElement('div');
+                stepDiv.className = 'route-plan-step';
+                stepDiv.innerHTML = `
+                    <span class="route-plan-step-icon">${index + 1}.</span>
+                    <span class="route-plan-step-text">${step.instruction}</span>
+                `;
+                stepsContainer.appendChild(stepDiv);
+            });
+        }
+        
+        // 显示面板
+        this.showRoutePanel();
+    }
+    
+    // 在地图上绘制路线
+    drawRouteOnMap(route) {
+        if (!route || !route.steps || !this.mapApp.map) return;
+        
+        // 收集所有路径点
+        const path = [];
+        let startPoint = null;
+        let endPoint = null;
+        
+        // 添加起点 - 尝试多种可能的数据结构
+        if (route.origin) {
+            startPoint = [route.origin.lng, route.origin.lat];
+        } else if (route.start && route.start.location) {
+            const coords = route.start.location.split(',');
+            startPoint = [parseFloat(coords[0]), parseFloat(coords[1])];
+        } else if (route.start_location) {
+            startPoint = [route.start_location.lng, route.start_location.lat];
+        } else if (path.length > 0) {
+            startPoint = path[0];
+        }
+        
+        if (startPoint) {
+            path.splice(0, 0, startPoint); // 将起点添加到路径开头
+        }
+        
+        // 添加路径中间点
+        route.steps.forEach(step => {
+            if (step.path) {
+                step.path.forEach(point => {
+                    path.push([point.lng, point.lat]);
+                });
+            }
+        });
+        
+        // 添加终点 - 尝试多种可能的数据结构
+        if (route.destination) {
+            endPoint = [route.destination.lng, route.destination.lat];
+        } else if (route.end && route.end.location) {
+            const coords = route.end.location.split(',');
+            endPoint = [parseFloat(coords[0]), parseFloat(coords[1])];
+        } else if (route.end_location) {
+            endPoint = [route.end_location.lng, route.end_location.lat];
+        } else if (path.length > 0) {
+            endPoint = path[path.length - 1];
+        }
+        
+        if (endPoint && path[path.length - 1] !== endPoint) {
+            path.push(endPoint); // 将终点添加到路径末尾
+        }
+        
+        // 创建路线折线
+        this.routePolyline = new AMap.Polyline({
+            path: path,
+            strokeColor: "#007AFF",
+            strokeWeight: 6,
+            strokeOpacity: 0.8
+        });
+        
+        // 将路线添加到地图
+        this.routePolyline.setMap(this.mapApp.map);
+        
+        // 创建起点标记
+        if (startPoint) {
+            const startMarker = new AMap.Marker({
+                position: startPoint,
+                icon: new AMap.Icon({
+                    size: new AMap.Size(25, 35),
+                    imageSize: new AMap.Size(25, 35),
+                    image: 'https://webapi.amap.com/theme/v1.3/markers/n/start.png'
+                }),
+                offset: new AMap.Pixel(-12, -35)
+            });
+            startMarker.setMap(this.mapApp.map);
+            this.routeMarkers.push(startMarker);
+            console.log('起点标记已添加:', startPoint);
+        }
+        
+        // 创建终点标记
+        if (endPoint) {
+            const endMarker = new AMap.Marker({
+                position: endPoint,
+                icon: new AMap.Icon({
+                    size: new AMap.Size(25, 35),
+                    imageSize: new AMap.Size(25, 35),
+                    image: 'https://webapi.amap.com/theme/v1.3/markers/n/end.png'
+                }),
+                offset: new AMap.Pixel(-12, -35)
+            });
+            endMarker.setMap(this.mapApp.map);
+            this.routeMarkers.push(endMarker);
+            console.log('终点标记已添加:', endPoint);
+        }
+        
+        // 调整地图视野以包含整个路线
+        if (path.length > 0) {
+            this.mapApp.map.setFitView([this.routePolyline]);
+        }
+    }
+    
+    // 更新路线信息
+    updateRouteInfo(message, isLoading = false) {
+        const infoDiv = document.getElementById('route-info');
+        if (infoDiv) {
+            if (isLoading) {
+                infoDiv.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.1); border-top: 2px solid #007AFF; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <span>${message}</span>
+                    </div>
+                `;
+            } else {
+                infoDiv.innerHTML = message;
+            }
+        }
+    }
+}
+
+// 行程安排功能
+class ScheduleManager {
+    constructor() {
+        this.currentDay = 'day1';
+        this.dayMarkers = [];
+        this.scheduleData = {};
+        this.isLoading = false;
+        this.routePlanner = null;
+        this.initializeScheduleEvents();
+        this.loadScheduleData(); // 自动加载行程数据
+    }
+    
+    initializeScheduleEvents() {
+        const daySelect = document.getElementById('day-select');
+        
+        // 下拉选择变化事件
+        daySelect.addEventListener('change', (event) => {
+            this.switchDay(event.target.value);
+        });
+        
+        console.log('行程安排功能初始化完成');
+    }
+    
+    switchDay(day) {
+        // 隐藏所有天的行程
+        const allSchedules = document.querySelectorAll('.day-schedule');
+        allSchedules.forEach(schedule => {
+            schedule.classList.remove('active');
+        });
+        
+        // 显示选中的天的行程
+        const selectedSchedule = document.getElementById(`${day}-schedule`);
+        if (selectedSchedule) {
+            selectedSchedule.classList.add('active');
+            this.currentDay = day;
+            
+            // 更新地图标记
+            this.updateMapMarkers(day);
+            
+            console.log(`切换到第${day.replace('day', '')}天行程`);
+        }
+    }
+    
+    updateMapMarkers(day) {
+        // 清除之前的地图标记
+        this.clearDayMarkers();
+        
+        // 获取当前天的行程数据
+        const dayData = this.scheduleData[day];
+        if (!dayData || !window.mapApp) return;
+        
+        // 为每个景点添加地图标记
+        dayData.forEach((item, index) => {
+            // 使用地理编码获取坐标
+            if (window.AMap && AMap.Geocoder) {
+                const geocoder = new AMap.Geocoder();
+                
+                geocoder.getLocation(item.place, (status, result) => {
+                    if (status === 'complete' && result.geocodes.length > 0) {
+                        const location = result.geocodes[0].location;
+                        
+                        // 添加标记
+                        const marker = window.mapApp.addMarker([location.lng, location.lat], {
+                            title: item.place,
+                            content: `
+                                <div class="marker-info">
+                                    <h4>${item.place}</h4>
+                                    <p><strong>时间:</strong> ${item.time}</p>
+                                    <p><strong>描述:</strong> ${item.description}</p>
+                                    <p><strong>顺序:</strong> 第${index + 1}站</p>
+                                </div>
+                            `
+                        });
+                        
+                        // 保存标记引用
+                        this.dayMarkers.push(marker);
+                        
+                        // 如果是第一个地点，将地图中心定位到该地点
+                        if (index === 0) {
+                            window.mapApp.map.setCenter([location.lng, location.lat]);
+                            window.mapApp.map.setZoom(14);
+                        }
+                    }
+                });
+            }
+        });
+        
+        console.log(`为第${day.replace('day', '')}天添加了${dayData.length}个景点标记`);
+    }
+    
+    clearDayMarkers() {
+        // 清除当前天的地图标记
+        this.dayMarkers.forEach(marker => {
+            if (marker && marker.setMap) {
+                marker.setMap(null);
+            }
+        });
+        this.dayMarkers = [];
+    }
+    
+    // 显示错误信息
+    showError(message) {
+        console.error('ScheduleManager错误:', message);
+        
+        // 显示错误提示
+        if (window.mapApp && typeof window.mapApp.showError === 'function') {
+            window.mapApp.showError(message);
+        }
+        
+        // 在行程面板中显示错误状态
+        const schedulePanel = document.getElementById('schedule-panel');
+        if (schedulePanel) {
+            // 移除现有的错误提示
+            const existingError = schedulePanel.querySelector('.schedule-error');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            // 添加错误提示
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'schedule-error';
+            errorDiv.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: #f66;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
+                    <h3 style="margin: 0 0 10px 0;">行程数据加载失败</h3>
+                    <p style="margin: 0;">${message}</p>
+                </div>
+            `;
+            schedulePanel.appendChild(errorDiv);
+        }
+    }
+    
+    // 加载行程数据
+    async loadScheduleData() {
+        if (this.isLoading) return;
+        
+        this.isLoading = true;
+        this.showLoadingState(true);
+        
+        try {
+            // 从后端API获取数据，失败时直接抛出错误
+            const response = await fetch('/api/schedule/data');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP错误! 状态码: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(`后端API错误: ${result.error || '未知错误'}`);
+            }
+            
+            this.scheduleData = result.data;
+            console.log('从后端加载行程数据成功');
+            
+        } catch (error) {
+            console.error('行程数据加载失败:', error);
+            
+            // 显示错误信息，不进行模拟数据回退
+            this.showError('行程数据加载失败: ' + error.message);
+            
+            // 设置空数据，避免后续操作出错
+            this.scheduleData = {};
+        } finally {
+            this.isLoading = false;
+            this.showLoadingState(false);
+            
+            // 更新UI和地图标记
+            this.updateScheduleUI();
+            this.updateMapMarkers(this.currentDay);
+        }
+    }
+    
+    // 显示/隐藏加载状态
+    showLoadingState(show) {
+        const schedulePanel = document.getElementById('schedule-panel');
+        const daySelect = document.getElementById('day-select');
+        
+        if (show) {
+            // 显示加载状态
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'schedule-loading';
+            loadingDiv.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; padding: 20px;">
+                    <div style="width: 20px; height: 20px; border: 2px solid rgba(0,0,0,0.1); border-top: 2px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 10px;"></div>
+                    <span style="color: #666;">正在加载行程数据...</span>
+                </div>
+            `;
+            
+            const existingLoading = schedulePanel.querySelector('.schedule-loading');
+            if (!existingLoading) {
+                schedulePanel.appendChild(loadingDiv);
+            }
+            
+            // 禁用下拉选择
+            if (daySelect) {
+                daySelect.disabled = true;
+            }
+        } else {
+            // 隐藏加载状态
+            const loadingDiv = schedulePanel.querySelector('.schedule-loading');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+            
+            // 启用下拉选择
+            if (daySelect) {
+                daySelect.disabled = false;
+            }
+        }
+    }
+    
+    // 加载行程数据
+    async loadScheduleData() {
+        if (this.isLoading) return;
+        
+        this.isLoading = true;
+        this.showLoadingState(true);
+        
+        try {
+            // 从后端API获取数据，失败时直接抛出错误
+            const response = await fetch('/api/schedule/data');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP错误! 状态码: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(`后端API错误: ${result.error || '未知错误'}`);
+            }
+            
+            this.scheduleData = result.data;
+            console.log('从后端加载行程数据成功');
+            
+        } catch (error) {
+            console.error('行程数据加载失败:', error);
+            
+            // 显示错误信息，不进行模拟数据回退
+            this.showError('行程数据加载失败: ' + error.message);
+            
+            // 设置空数据，避免后续操作出错
+            this.scheduleData = {};
+        } finally {
+            this.isLoading = false;
+            this.showLoadingState(false);
+            
+            // 更新UI和地图标记
+            this.updateScheduleUI();
+            this.updateMapMarkers(this.currentDay);
+        }
+    }
+    
+    // 显示/隐藏加载状态
+    showLoadingState(show) {
+        const schedulePanel = document.getElementById('schedule-panel');
+        const daySelect = document.getElementById('day-select');
+        
+        if (show) {
+            // 显示加载状态
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'schedule-loading';
+            loadingDiv.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; padding: 20px;">
+                    <div style="width: 20px; height: 20px; border: 2px solid rgba(0,0,0,0.1); border-top: 2px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 10px;"></div>
+                    <span style="color: #666;">正在加载行程数据...</span>
+                </div>
+            `;
+            
+            const existingLoading = schedulePanel.querySelector('.schedule-loading');
+            if (!existingLoading) {
+                schedulePanel.appendChild(loadingDiv);
+            }
+            
+            // 禁用下拉选择
+            if (daySelect) {
+                daySelect.disabled = true;
+            }
+        } else {
+            // 隐藏加载状态
+            const loadingDiv = schedulePanel.querySelector('.schedule-loading');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+            
+            // 启用下拉选择
+            if (daySelect) {
+                daySelect.disabled = false;
+            }
+        }
+    }
+    
+    // 动态更新行程数据的方法
+    updateScheduleData(newData) {
+        // 合并新的行程数据
+        this.scheduleData = { ...this.scheduleData, ...newData };
+        
+        // 更新UI显示
+        this.updateScheduleUI();
+        
+        // 重新加载当前天的地图标记
+        this.updateMapMarkers(this.currentDay);
+        
+        console.log('行程数据更新完成');
+    }
+    
+    // 初始化路径规划器
+    initializeRoutePlanner() {
+        if (window.mapApp && !this.routePlanner) {
+            this.routePlanner = new RoutePlanner(window.mapApp);
+        }
+    }
+    
+    // 初始化路径规划器
+    initializeRoutePlanner() {
+        if (window.mapApp && !this.routePlanner) {
+            this.routePlanner = new RoutePlanner(window.mapApp);
+        }
+    }
+    
+    // 更新UI显示
+    updateScheduleUI() {
+        // 确保路径规划器已初始化
+        this.initializeRoutePlanner();
+        
+        // 更新每个天的行程内容
+        Object.keys(this.scheduleData).forEach(day => {
+            const scheduleElement = document.getElementById(`${day}-schedule`);
+            if (scheduleElement) {
+                const scheduleList = scheduleElement.querySelector('.schedule-list');
+                if (scheduleList) {
+                    // 清空现有内容
+                    scheduleList.innerHTML = '';
+                    
+                    // 获取当前天的行程数据
+                    const daySchedule = this.scheduleData[day];
+                    
+                    // 添加新的行程项目
+                    daySchedule.forEach((item, index) => {
+                        const scheduleItem = document.createElement('div');
+                        scheduleItem.className = 'schedule-item';
+                        scheduleItem.innerHTML = `
+                            <div class="time">${item.time}</div>
+                            <div class="place">${item.place}</div>
+                            <div class="description">${item.description}</div>
+                        `;
+                        scheduleList.appendChild(scheduleItem);
+                        
+                        // 在相邻地点之间添加箭头按钮（除了最后一个地点）
+                        if (index < daySchedule.length - 1) {
+                            const nextItem = daySchedule[index + 1];
+                            const arrowDiv = document.createElement('div');
+                            arrowDiv.className = 'route-arrow';
+                            arrowDiv.innerHTML = `
+                                <button class="route-arrow-button" data-start="${item.place}" data-end="${nextItem.place}">
+                                    <span class="route-arrow-icon">→</span>
+                                    <span>路线规划</span>
+                                </button>
+                            `;
+                            scheduleList.appendChild(arrowDiv);
+                            
+                            // 添加箭头按钮点击事件
+                            const arrowButton = arrowDiv.querySelector('.route-arrow-button');
+                            arrowButton.addEventListener('click', () => {
+                                this.handleRoutePlanning(item.place, nextItem.place);
+                            });
+                        }
+                    });
+                }
+            }
+        });
+    }
+    
+    // 处理路线规划
+    async handleRoutePlanning(startPlace, endPlace) {
+        if (!this.routePlanner) {
+            this.initializeRoutePlanner();
+        }
+        
+        if (this.routePlanner) {
+            await this.routePlanner.planRoute(startPlace, endPlace);
+        }
+    }
+}
+
 // 页面加载完成后初始化应用
 document.addEventListener('DOMContentLoaded', () => {
     console.log('📄 页面DOM加载完成，开始初始化地图应用');
+    
+    // 强制设置搜索框位置和宽度
+    const inputPanel = document.getElementById('input-panel');
+    if (inputPanel) {
+        // 获取视口宽度
+        const viewportWidth = window.innerWidth;
+        // 计算左侧面板宽度的一半
+        const leftPanelHalf = 175;
+        // 设置搜索框位置为页面中心，向右偏移左侧面板一半的宽度
+        inputPanel.style.left = `calc(50% + ${leftPanelHalf}px)`;
+        inputPanel.style.transform = 'translateX(-50%)';
+        inputPanel.style.width = '800px';
+        inputPanel.style.maxWidth = '800px';
+        console.log('🔧 搜索框位置已强制设置:', {
+            left: inputPanel.style.left,
+            transform: inputPanel.style.transform,
+            width: inputPanel.style.width,
+            viewportWidth
+        });
+    }
     
     // 添加全局错误处理
     window.addEventListener('error', (event) => {
@@ -862,7 +1729,25 @@ document.addEventListener('DOMContentLoaded', () => {
     
     try {
         const app = new MapApp();
+        
+        // 将地图应用添加到全局，方便行程管理器访问
+        window.mapApp = app;
+        
         app.init();
+        
+        // 等待地图初始化完成后，初始化行程安排管理器
+        const initScheduleManager = () => {
+            const scheduleManager = new ScheduleManager();
+            
+            // 将行程管理器添加到全局，方便调试
+            window.scheduleManager = scheduleManager;
+            
+            console.log('行程安排与地图联动功能已启用');
+        };
+        
+        // 延迟初始化行程管理器，确保地图完全加载
+        setTimeout(initScheduleManager, 1000);
+        
     } catch (error) {
         console.error('💥 应用初始化异常:', error);
         

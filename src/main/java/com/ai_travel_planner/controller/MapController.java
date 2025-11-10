@@ -16,6 +16,9 @@ public class MapController {
     @Value("${amap.api-key:#{null}}")
     private String apiKey;
     
+    @Value("${amap.security-js-code:#{null}}")
+    private String securityJsCode;
+    
     @Value("${amap.center:116.397428,39.90923}")
     private String center;
     
@@ -53,6 +56,9 @@ public class MapController {
             config.put("apiKey", apiKey);
         }
         
+        // 添加安全密钥
+        config.put("securityJsCode", securityJsCode);
+        
         config.put("center", center);
         config.put("zoom", zoom);
         config.put("style", style);
@@ -77,4 +83,5 @@ public class MapController {
         
         return ResponseEntity.ok(status);
     }
+    
 }

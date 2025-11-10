@@ -8,6 +8,89 @@
 </head>
 <body>
     <div id="container">
+        <!-- 左侧行程安排面板 -->
+        <div id="schedule-panel">
+            <div class="schedule-header">
+                <h3>行程安排</h3>
+                <div class="day-selector">
+                    <label for="day-select">选择天数：</label>
+                    <select id="day-select">
+                        <option value="day1">第1天</option>
+                        <option value="day2">第2天</option>
+                        <option value="day3">第3天</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="schedule-content">
+                <!-- 第1天行程 -->
+                <div id="day1-schedule" class="day-schedule active">
+                    <h4>第1天行程安排</h4>
+                    <div class="schedule-list">
+                        <div class="schedule-item">
+                            <div class="time">08:00-09:00</div>
+                            <div class="place">杭州东站</div>
+                            <div class="description">抵达杭州，乘坐地铁1号线前往市区</div>
+                        </div>
+                        <div class="schedule-item">
+                            <div class="time">09:30-12:00</div>
+                            <div class="place">西湖景区</div>
+                            <div class="description">从断桥残雪开始环湖步行</div>
+                        </div>
+                        <div class="schedule-item">
+                            <div class="time">12:00-13:00</div>
+                            <div class="place">楼外楼</div>
+                            <div class="description">午餐，推荐西湖醋鱼或片儿川</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 第2天行程 -->
+                <div id="day2-schedule" class="day-schedule">
+                    <h4>第2天行程安排</h4>
+                    <div class="schedule-list">
+                        <div class="schedule-item">
+                            <div class="time">08:30-09:30</div>
+                            <div class="place">酒店</div>
+                            <div class="description">早餐后退房，寄存行李</div>
+                        </div>
+                        <div class="schedule-item">
+                            <div class="time">10:00-12:00</div>
+                            <div class="place">灵隐寺</div>
+                            <div class="description">参观千年古刹，感受佛教文化</div>
+                        </div>
+                        <div class="schedule-item">
+                            <div class="time">12:30-13:30</div>
+                            <div class="place">素斋馆</div>
+                            <div class="description">灵隐寺附近用餐</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 第3天行程 -->
+                <div id="day3-schedule" class="day-schedule">
+                    <h4>第3天行程安排</h4>
+                    <div class="schedule-list">
+                        <div class="schedule-item">
+                            <div class="time">09:00-11:00</div>
+                            <div class="place">中国丝绸博物馆</div>
+                            <div class="description">了解丝绸文化，免费参观</div>
+                        </div>
+                        <div class="schedule-item">
+                            <div class="time">11:30-12:30</div>
+                            <div class="place">浙江大学玉泉校区</div>
+                            <div class="description">附近用餐，性价比高</div>
+                        </div>
+                        <div class="schedule-item">
+                            <div class="time">13:00-15:00</div>
+                            <div class="place">西溪湿地公园</div>
+                            <div class="description">东入口进入，免费区域游览</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- 输入控件面板 -->
         <div id="input-panel">
             <div class="input-container">

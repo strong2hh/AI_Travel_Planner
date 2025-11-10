@@ -38,8 +38,18 @@ public class AaLiBigModelController {
                 return ResponseEntity.badRequest().body(response);
             }
             
+            // 添加对大模型的格式要求
+            String formattedQuery = query + "\n请按照以下格式要求生成旅游规划：\n" +
+                    "1. 每天给出详细的时间和地点\n" +
+                    "2. 时间用$$框选起来，例如：$09:00-10:00$\n" +
+                    "3. 地点用【】框选起来，例如：【天安门广场】\n" +
+                    "4. 除时间和地点外，其他文本不要使用$和【】字符\n" +
+                    "5. 每天的旅游内容用##第1天##，##第2天##等分割]n" +
+                    "6. 第1天、第2天等独立占一行，用##框选起来\n" +
+                    "7. 除天数字符外，其他文本不要使用#字符";
+            
             // 调用大模型服务
-            String aiResponse = bigModelService.generateResponse(query);
+            String aiResponse = bigModelService.generateResponse(formattedQuery);
             
             // 返回结果
             response.put("success", true);

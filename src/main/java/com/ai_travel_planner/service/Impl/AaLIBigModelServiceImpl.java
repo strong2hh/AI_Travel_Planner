@@ -1,6 +1,8 @@
 package com.ai_travel_planner.service.Impl;
 
 import com.ai_travel_planner.service.AaLIBigModelService;
+import com.ai_travel_planner.service.ContentSplit;
+import com.ai_travel_planner.service.ContentSplit.TimePlacePair;
 import com.alibaba.dashscope.aigc.generation.Generation;
 import com.alibaba.dashscope.aigc.generation.GenerationParam;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
@@ -10,10 +12,13 @@ import com.alibaba.dashscope.exception.ApiException;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.protocol.Protocol;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 import java.lang.System;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 阿里云大模型服务实现类
@@ -21,6 +26,9 @@ import java.lang.System;
  */
 @Service
 public class AaLIBigModelServiceImpl implements AaLIBigModelService {
+    
+    @Autowired
+    private ContentSplit contentSplit;
     
     /**
      * 调用AI模型生成回复
@@ -113,10 +121,66 @@ public class AaLIBigModelServiceImpl implements AaLIBigModelService {
             System.out.println("Raw response text: " + responseText);
             System.out.println("Formatted text: " + formatResponseText(responseText));
             
+            // 调用ContentSplit方法分割文本并输出结果
+            callContentSplit(responseText);
+            
             return formatResponseText(responseText);
         } catch (Exception e) {
             System.err.println("Error extracting response text: " + e.getMessage());
             return "抱歉，处理AI回复时出现错误。";
+        }
+    }
+    
+    /**
+     * 调用ContentSplit方法分割文本并输出结果
+     */
+    private void callContentSplit(String text) {
+        try {
+            if (contentSplit == null) {
+                System.out.println("⚠ ContentSplit服务未注入，无法进行文本分割");
+                return;
+            }
+            
+            if (text == null || text.trim().isEmpty()) {
+                System.out.println("⚠ 文本为空，无法进行分割");
+                return;
+            }
+            
+            System.out.println("🔍 开始调用ContentSplit进行文本分割...");
+            
+            // 调用ContentSplit服务
+            Map<String, List<TimePlacePair>> result = contentSplit.timeAndPlaceExtraction(text);
+            
+            // 输出分割结果
+            System.out.println("📊 ContentSplit分割结果:");
+            System.out.println("========================");
+            
+            if (result.isEmpty()) {
+                System.out.println("未找到有效的时间地点信息");
+            } else {
+                for (Map.Entry<String, List<TimePlacePair>> entry : result.entrySet()) {
+                    String day = entry.getKey();
+                    List<TimePlacePair> pairs = entry.getValue();
+                    
+                    System.out.println(day + ":");
+                    
+                    if (pairs.isEmpty()) {
+                        System.out.println("  无时间地点安排");
+                    } else {
+                        for (TimePlacePair pair : pairs) {
+                            System.out.println("  - " + pair.getTime() + " → " + pair.getPlace());
+                        }
+                    }
+                    System.out.println();
+                }
+            }
+            
+            System.out.println("========================");
+            System.out.println("✅ ContentSplit分割完成");
+            
+        } catch (Exception e) {
+            System.err.println("❌ ContentSplit调用失败: " + e.getMessage());
+            e.printStackTrace();
         }
     }
     

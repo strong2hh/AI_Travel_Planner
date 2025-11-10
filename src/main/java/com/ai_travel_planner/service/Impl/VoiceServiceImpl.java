@@ -50,9 +50,10 @@ public class VoiceServiceImpl implements VoiceRecognitionService, InitializingBe
     @Override
     public void afterPropertiesSet() throws Exception {
         log.info("科大讯飞语音服务初始化");
-        log.info("AppId: {}", appId);
-        log.info("ApiKey: {}", apiKey != null ? apiKey.substring(0, Math.min(10, apiKey.length())) + "..." : "null");
-        log.info("ApiSecret: {}", apiSecret != null ? "***已配置***" : "null");
+        log.info("配置验证: AppId {}, ApiKey {}, ApiSecret {}", 
+                appId != null && !appId.isEmpty() ? "已配置" : "未配置",
+                apiKey != null && !apiKey.isEmpty() ? "已配置" : "未配置",
+                apiSecret != null && !apiSecret.isEmpty() ? "已配置" : "未配置");
     }
     
     // 用于测试的getter方法

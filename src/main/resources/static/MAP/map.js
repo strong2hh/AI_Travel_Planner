@@ -16,48 +16,89 @@ class MapApp {
 
     async init() {
         try {
-            // 加载配置
+            console.log('🚀 开始初始化地图应用...');
+            
+            // 步骤1: 加载配置
+            console.log('📋 步骤1: 加载配置信息');
             this.config = await this.loadConfig();
             
-            // 先加载高德地图API
+            // 步骤2: 加载高德地图API
+            console.log('🌍 步骤2: 加载高德地图API');
             await this.loadAMapAPI();
             
-            // 然后创建地图
+            // 步骤3: 创建地图
+            console.log('🗺️ 步骤3: 创建地图实例');
             this.createMap();
             
-            // 初始化事件
+            // 步骤4: 初始化事件
+            console.log('🎛️ 步骤4: 初始化事件监听');
             this.initializeEvents();
             
-            console.log('地图初始化成功');
+            console.log('✅ 地图初始化成功');
             
         } catch (error) {
-            console.error('初始化失败:', error);
-            this.showError('地图初始化失败: ' + error.message);
+            console.error('❌ 初始化失败:', error);
+            
+            // 提供更详细的错误信息
+            let errorDetails = `地图初始化失败: ${error.message}`;
+            
+            if (error.message.includes('网络连接')) {
+                errorDetails += '\n• 请检查网络连接是否正常';
+                errorDetails += '\n• 确保可以访问 https://webapi.amap.com';
+            } else if (error.message.includes('API密钥')) {
+                errorDetails += '\n• 请检查 application.properties 中的 amap.api-key 配置';
+                errorDetails += '\n• 确保API密钥有效且未过期';
+            }
+            
+            this.showError(errorDetails);
         }
     }
 
     // 加载配置文件
     async loadConfig() {
         try {
-            const response = await fetch('/static/MAP/map.properties');
-            if (!response.ok) throw new Error('配置文件加载失败');
+            // 从后端API获取配置
+            const response = await fetch('/api/map/config');
+            if (!response.ok) throw new Error('配置API加载失败');
             
-            const text = await response.text();
-            const config = {};
-            text.split('\n').forEach(line => {
-                const [key, value] = line.split('=');
-                if (key && value) {
-                    config[key.trim()] = value.trim();
-                }
-            });
+            const configData = await response.json();
+            
+            // 输出获取到的配置信息，用于调试
+            console.log('=== 地图配置信息 ===');
+            console.log('API密钥:', configData.apiKey ? configData.apiKey.substring(0, 8) + '...' : '未配置');
+            console.log('中心点:', configData.center);
+            console.log('缩放级别:', configData.zoom);
+            console.log('地图样式:', configData.style);
+            console.log('定位功能:', configData.enableGeolocation);
+            if (configData.warning) {
+                console.warn('配置警告:', configData.warning);
+            }
+            console.log('====================');
+            
+            // 转换配置格式以匹配原有结构
+            const config = {
+                apiKey: configData.apiKey || 'YOUR_API_KEY',
+                center: configData.center || '116.397428,39.90923',
+                zoom: configData.zoom || '12',
+                style: configData.style || 'normal',
+                enableGeolocation: configData.enableGeolocation !== undefined ? configData.enableGeolocation : true
+            };
+            
+            // 如果有警告信息，显示给用户
+            if (configData.warning) {
+                console.warn(configData.warning);
+            }
             
             return config;
         } catch (error) {
+            console.error('配置加载失败:', error);
             // 使用默认配置
             return {
                 apiKey: 'YOUR_API_KEY',
                 center: '116.397428,39.90923',
-                zoom: '12'
+                zoom: '12',
+                style: 'normal',
+                enableGeolocation: true
             };
         }
     }
@@ -65,75 +106,113 @@ class MapApp {
     // 加载高德地图API
     loadAMapAPI() {
         return new Promise((resolve, reject) => {
+            console.log('开始加载高德地图API...');
+            
             // 检查是否已经加载
-            if (window.AMap) {
-                console.log('AMap对象已存在，直接使用');
+            if (window.AMap && typeof window.AMap.Map === 'function') {
+                console.log('✓ AMap对象已存在，直接使用');
                 resolve();
                 return;
             }
 
             // 确保API密钥有效
-            const apiKey = this.config.apiKey || 'YOUR_API_KEY';
-            if (apiKey === 'YOUR_API_KEY') {
-                console.warn('使用默认API密钥，可能需要配置有效的API密钥');
+            const apiKey = this.config.apiKey;
+            console.log('使用的API密钥:', apiKey ? apiKey.substring(0, 8) + '...' : '未配置');
+            
+            // 检查是否为默认密钥或未配置
+            if (!apiKey || apiKey === 'YOUR_API_KEY') {
+                console.warn('⚠ 使用默认API密钥，可能需要配置有效的API密钥');
+                // 显示更详细的错误信息
+                this.showError('地图API密钥未配置，请检查application.properties中的amap.api-key设置');
             }
 
-            // 构建API URL，移除复杂的插件参数
-            const apiUrl = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}`;
-            console.log('加载API URL:', apiUrl);
+            // 构建API URL，使用更稳定的版本和参数
+            const apiUrl = `https://webapi.amap.com/maps?v=2.0&key=${apiKey}&plugin=AMap.Geolocation,AMap.Geocoder,AMap.ToolBar,AMap.Scale`;
+            console.log('📡 加载API URL:', apiUrl);
             
             const script = document.createElement('script');
             script.src = apiUrl;
+            script.async = true;
+            script.defer = true;
             
-            let loaded = false;
+            let scriptLoaded = false;
+            let amapReady = false;
+            
             script.onload = () => {
-                loaded = true;
-                console.log('高德地图API脚本加载完成');
+                scriptLoaded = true;
+                console.log('✓ 高德地图API脚本加载完成');
                 
-                // 等待AMap对象可用
+                // 等待AMap对象可用，使用更智能的检测
                 const checkAMap = () => {
-                    if (window.AMap && window.AMap.Map) {
-                        console.log('AMap对象已可用');
-                        resolve();
+                    if (window.AMap && typeof window.AMap.Map === 'function') {
+                        console.log('✓ AMap对象已可用');
+                        amapReady = true;
                         return true;
                     }
-                    console.log('检查AMap对象，当前状态:', typeof window.AMap);
                     return false;
                 };
                 
                 // 立即检查一次
-                if (checkAMap()) return;
+                if (checkAMap()) {
+                    resolve();
+                    return;
+                }
                 
-                // 轮询检查，更频繁的检查
+                // 延迟检查，给AMap对象一些时间初始化
+                let attempts = 0;
+                const maxAttempts = 100; // 100次尝试，总共5秒
                 const interval = setInterval(() => {
+                    attempts++;
                     if (checkAMap()) {
                         clearInterval(interval);
+                        resolve();
+                        return;
                     }
-                }, 50); // 更频繁的检查
-                
-                // 超时处理，延长超时时间
-                setTimeout(() => {
-                    clearInterval(interval);
-                    if (!window.AMap) {
-                        console.error('AMap对象加载超时，检查网络连接和API密钥');
+                    
+                    if (attempts % 10 === 0) {
+                        console.log(`⏳ 等待AMap对象初始化... 尝试 ${attempts}/${maxAttempts}`);
+                    }
+                    
+                    if (attempts >= maxAttempts) {
+                        clearInterval(interval);
+                        console.error('❌ AMap对象加载超时，尝试次数:', attempts);
                         reject(new Error('AMap对象加载超时，请检查网络连接和API密钥配置'));
                     }
-                }, 15000); // 延长超时时间
+                }, 50); // 每50ms检查一次
+                
+                // 备用超时处理
+                setTimeout(() => {
+                    clearInterval(interval);
+                    if (!amapReady) {
+                        console.error('❌ AMap对象加载超时，强制失败');
+                        reject(new Error('AMap对象加载超时，请检查网络连接和API密钥配置'));
+                    }
+                }, 8000); // 8秒超时
             };
             
             script.onerror = (error) => {
-                console.error('高德地图API加载失败:', error);
+                console.error('❌ 高德地图API加载失败:', error);
                 reject(new Error(`高德地图API加载失败: ${error.message}`));
             };
             
             // 添加加载状态监听
             script.onreadystatechange = function() {
+                console.log('📄 脚本状态变化:', this.readyState);
                 if (this.readyState === 'loaded' || this.readyState === 'complete') {
-                    console.log('脚本状态变化:', this.readyState);
+                    console.log('✓ 脚本状态: 完成加载');
                 }
             };
             
+            // 确保脚本添加到head中
+            console.log('📥 添加脚本到页面...');
             document.head.appendChild(script);
+            
+            // 添加全局错误监听，捕获可能的网络错误
+            window.addEventListener('error', (event) => {
+                if (event.filename && event.filename.includes('amap.com')) {
+                    console.error('🌐 网络错误捕获:', event);
+                }
+            });
         });
     }
 
@@ -155,10 +234,12 @@ class MapApp {
             
             console.log('创建地图参数:', { center, zoom });
             
-            // 简化的地图配置
+            // 简化的地图配置，添加更好的错误处理
             this.map = new window.AMap.Map('map', {
                 zoom: zoom,
-                center: center
+                center: center,
+                viewMode: '2D', // 添加视图模式
+                resizeEnable: true // 启用窗口大小调整
             });
 
             console.log('基础地图创建成功');
@@ -179,13 +260,25 @@ class MapApp {
                     // 定位功能单独处理
                     this.initializeGeolocation();
                     
+                    // 显示地图加载成功提示
+                    this.showSuccess('地图加载成功');
+                    
                 } catch (error) {
                     console.warn('部分控件加载失败:', error);
+                    this.showError('部分地图控件加载失败: ' + error.message);
                 }
             }, 1000);
             
         } catch (error) {
             console.error('地图创建失败:', error);
+            
+            // 提供更详细的错误信息
+            let errorMessage = '地图创建失败: ' + error.message;
+            if (error.message.includes('APILoader')) {
+                errorMessage += ' - 请检查API密钥是否正确配置';
+            }
+            
+            this.showError(errorMessage);
             throw error;
         }
     }
@@ -755,6 +848,51 @@ class MapApp {
 
 // 页面加载完成后初始化应用
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new MapApp();
-    app.init();
+    console.log('📄 页面DOM加载完成，开始初始化地图应用');
+    
+    // 添加全局错误处理
+    window.addEventListener('error', (event) => {
+        console.error('🌐 全局错误捕获:', event);
+    });
+    
+    // 添加未处理的Promise拒绝处理
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('❌ 未处理的Promise拒绝:', event.reason);
+    });
+    
+    try {
+        const app = new MapApp();
+        app.init();
+    } catch (error) {
+        console.error('💥 应用初始化异常:', error);
+        
+        // 显示友好的错误信息
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fee;
+            border: 2px solid #f66;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 10000;
+            max-width: 400px;
+        `;
+        errorDiv.innerHTML = `
+            <h3 style="color: #f66; margin: 0 0 10px 0;">地图加载失败</h3>
+            <p style="margin: 0 0 15px 0;">${error.message}</p>
+            <button onclick="location.reload()" style="
+                background: #f66;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+            ">重新加载</button>
+        `;
+        document.body.appendChild(errorDiv);
+    }
 });

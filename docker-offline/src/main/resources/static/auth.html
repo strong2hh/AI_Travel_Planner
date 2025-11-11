@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI旅行规划 - 登录注册</title>
+    <link rel="stylesheet" href="/static/auth/style.css">
+    <!-- 尝试多个Supabase CDN源 -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        // 如果主CDN失败，尝试备用源
+        if (!window.supabase) {
+            console.log('尝试加载备用CDN...');
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+            script.onload = function() {
+                console.log('备用CDN加载成功');
+            };
+            script.onerror = function() {
+                console.log('备用CDN加载失败，尝试本地文件...');
+                // 最后尝试本地文件
+                const localScript = document.createElement('script');
+                localScript.src = '/static/auth/supabase.min.js';
+                localScript.onerror = function() {
+                    console.error('所有Supabase加载尝试都失败了');
+                    // 显示错误信息
+                    document.body.innerHTML = `
+                        <div style="padding: 20px; max-width: 500px; margin: 50px auto; text-align: center; font-family: Arial, sans-serif;">
+                            <h2>加载失败</h2>
+                            <p>无法加载Supabase库，可能是网络问题。</p>
+                            <p>请尝试以下解决方案：</p>
+                            <ol style="text-align: left;">
+                                <li>检查网络连接</li>
+                                <li>访问 <a href="/static/auth/download-supabase.html" target="_blank">下载页面</a> 下载本地库文件</li>
+                                <li>刷新页面重试</li>
+                            </ol>
+                            <button onclick="location.reload()" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                重新加载
+                            </button>
+                        </div>
+                    `;
+                };
+                document.head.appendChild(localScript);
+            };
+            document.head.appendChild(script);
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="auth-container">
+            <div class="auth-header">
+                <h1>AI旅行规划</h1>
+                <p>探索世界，智能规划您的旅程</p>
+            </div>
+
+            <!-- 登录表单 -->
+            <div id="login-form" class="form-container">
+                <h2>登录账户</h2>
+                <form id="login">
+                    <div class="input-group">
+                        <label for="login-email">邮箱</label>
+                        <input type="email" id="login-email" required placeholder="请输入您的邮箱">
+                    </div>
+                    <div class="input-group">
+                        <label for="login-password">密码</label>
+                        <input type="password" id="login-password" required placeholder="请输入您的密码">
+                    </div>
+                    <button type="submit" class="btn-primary">登录</button>
+                </form>
+                <p class="switch-form">还没有账户？<a href="#" id="show-register">立即注册</a></p>
+                <div id="login-message" class="message"></div>
+            </div>
+
+            <!-- 注册表单 -->
+            <div id="register-form" class="form-container hidden">
+                <h2>注册账户</h2>
+                <form id="register">
+                    <div class="input-group">
+                        <label for="register-name">用户名</label>
+                        <input type="text" id="register-name" required placeholder="请输入您的用户名">
+                    </div>
+                    <div class="input-group">
+                        <label for="register-email">邮箱</label>
+                        <input type="email" id="register-email" required placeholder="请输入您的邮箱">
+                    </div>
+                    <div class="input-group">
+                        <label for="register-password">密码</label>
+                        <input type="password" id="register-password" required placeholder="请输入密码（至少6位）" minlength="6">
+                    </div>
+                    <div class="input-group">
+                        <label for="register-confirm-password">确认密码</label>
+                        <input type="password" id="register-confirm-password" required placeholder="请再次输入密码">
+                    </div>
+                    <button type="submit" class="btn-primary">注册</button>
+                </form>
+                <p class="switch-form">已有账户？<a href="#" id="show-login">立即登录</a></p>
+                <div id="register-message" class="message"></div>
+            </div>
+
+            <!-- 密码重置表单 -->
+            <div id="reset-form" class="form-container hidden">
+                <h2>重置密码</h2>
+                <p>请输入您的邮箱地址，我们将发送重置密码的链接给您</p>
+                <form id="reset">
+                    <div class="input-group">
+                        <label for="reset-email">邮箱</label>
+                        <input type="email" id="reset-email" required placeholder="请输入您的邮箱">
+                    </div>
+                    <button type="submit" class="btn-primary">发送重置链接</button>
+                </form>
+                <p class="switch-form"><a href="#" id="back-to-login">返回登录</a></p>
+                <div id="reset-message" class="message"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/auth/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  ai-travel-planner:
+    image: crpi-ovqmcstndscfksyn.cn-hangzhou.personal.cr.aliyuncs.com/ai_travel_planner123/ai-travel-planner:latest
+    container_name: ai-travel-planner
+    ports:
+      - "8080:8080"
+    environment:
+      # 可以通过环境变量覆盖配置
+      - spring.profiles.active=prod
+      # 如果需要，可以在这里添加环境变量覆盖application.properties中的配置
+      # - supabase.url=https://your-project.supabase.co
+      # - supabase.anon-key=your-anon-key
+      # - amap.api-key=your-amap-key
+      # - amap.security-js-code=your-amap-security-code
+      # - alibaba.api.key=your-alibaba-key
+      # - iflytek.voice.app-id=your-iflytek-app-id
+      # - iflytek.voice.api-key=your-iflytek-api-key
+      # - iflytek.voice.api-secret=your-iflytek-api-secret
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/map/config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

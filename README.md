@@ -193,30 +193,147 @@ A: 检查以下配置：
 2. 添加响应式设计支持
 3. 考虑不同浏览器兼容性
 
-## 部署
+## 部署方式
 
-### Docker部署
+### 🚀 方式一：离线Docker镜像部署（推荐）
 
-1. 创建Dockerfile
-2. 构建Docker镜像
-3. 运行容器
+#### 直接下载离线包运行（最简单）
 
+**下载预构建的离线镜像包：**
 ```bash
-docker build -t ai-travel-planner .
-docker run -p 8080:8080 ai-travel-planner
+# 下载并解压离线包
+tar -xzf ai-travel-planner-offline.tar.gz
+cd docker-offline
+
+# Linux/Mac 系统
+./build-offline.sh
+
+# Windows 系统
+build-offline.bat
 ```
 
-### 传统部署
+**或者直接加载预构建的镜像：**
+```bash
+# 下载并加载离线镜像
+docker load -i ai-travel-planner-offline.tar
 
-1. 使用Maven打包：
-   ```bash
-   mvn clean package
-   ```
-2. 将生成的JAR文件部署到服务器
-3. 使用Java运行：
-   ```bash
-   java -jar AI-Travel-Planner.jar
-   ```
+# 运行容器
+docker run -d -p 8080:8080 ai-travel-planner-offline:latest
+```
+
+#### 离线包特性
+- ✅ **完全离线** - 无需网络连接即可部署
+- ✅ **跨平台支持** - Windows、Linux、macOS
+- ✅ **开箱即用** - 预构建的脚本和说明文档
+- ✅ **网络问题解决** - 避免了Docker Hub网络连接问题
+
+### 🔧 方式二：从源码构建和部署
+
+#### 传统方式（直接运行JAR）
+```bash
+# 构建项目
+mvn clean package
+
+# 运行JAR文件
+java -jar target/*.jar
+```
+
+#### Docker方式（需要网络连接）
+```bash
+# 构建Docker镜像
+docker build -t ai-travel-planner:latest .
+
+# 运行容器
+docker run -d -p 8080:8080 ai-travel-planner:latest
+```
+
+### ☁️ 方式三：云服务部署
+
+#### Docker部署到阿里云镜像仓库
+```bash
+# 登录阿里云镜像仓库
+docker login registry.cn-hangzhou.aliyuncs.com --username=<您的阿里云账号>
+
+# 构建并推送镜像
+./docker-deploy.sh
+```
+
+#### 在服务器上部署
+```bash
+# 使用Docker命令
+docker run -d -p 8080:8080 registry.cn-hangzhou.aliyuncs.com/your-namespace/ai-travel-planner:latest
+
+# 或使用Docker Compose
+docker-compose up -d
+```
+
+### ⚙️ 环境变量配置
+
+在Docker环境中，您可以通过环境变量覆盖配置：
+```bash
+docker run -d -p 8080:8080 \
+  -e supabase.url=https://your-project.supabase.co \
+  -e supabase.anon-key=your-anon-key \
+  -e amap.api-key=your-amap-key \
+  -e amap.security-js-code=your-amap-security-code \
+  -e alibaba.api.key=your-alibaba-key \
+  -e iflytek.voice.app-id=your-iflytek-app-id \
+  -e iflytek.voice.api-key=your-iflytek-api-key \
+  -e iflytek.voice.api-secret=your-iflytek-api-secret \
+  ai-travel-planner:latest
+```
+
+## 📦 GitHub Releases 部署文件
+
+项目提供以下可直接下载的部署文件：
+- `ai-travel-planner-offline.tar.gz` - 完整的离线部署包
+- `docker-offline/` - 离线部署目录（包含在tar.gz中）
+
+**详细部署说明请参考：** [GITHUB_DEPLOYMENT.md](GITHUB_DEPLOYMENT.md)
+
+## 📋 GitHub Releases 使用指南
+
+### 下载和运行离线包
+
+#### 方式一：直接下载离线包（最简单）
+1. 访问项目的GitHub Releases页面
+2. 下载 `ai-travel-planner-offline.tar.gz` 文件
+3. 解压并运行：
+```bash
+ntar -xzf ai-travel-planner-offline.tar.gz
+cd docker-offline
+./build-offline.sh  # Linux/Mac
+# 或 build-offline.bat  # Windows
+```
+
+#### 方式二：使用预构建的Docker镜像
+1. 下载 `ai-travel-planner-offline.tar` 镜像文件
+2. 加载并运行：
+```bash
+docker load -i ai-travel-planner-offline.tar
+docker run -d -p 8080:8080 ai-travel-planner-offline:latest
+```
+
+### 创建GitHub Release
+
+如果您是项目维护者，可以使用以下脚本创建Release：
+```bash
+# 运行GitHub Release创建脚本
+bash create-github-release.sh
+```
+
+脚本会自动：
+- 构建项目并创建JAR文件
+- 打包离线部署文件
+- 生成版本化的Release文件
+
+### 离线包内容说明
+
+离线包包含：
+- 📦 **完整的项目源码** - 可在没有网络的环境下构建和运行
+- 🐳 **Docker配置** - 支持离线Docker镜像构建
+- 🖥️ **跨平台脚本** - Windows、Linux、macOS兼容
+- 📚 **详细文档** - 包含完整的部署和使用说明
 
 ## 贡献指南
 

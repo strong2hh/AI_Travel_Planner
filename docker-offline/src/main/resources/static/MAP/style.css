@@ -1,0 +1,843 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Microsoft YaHei', Arial, sans-serif;
+    overflow: hidden;
+}
+
+#container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* 输入面板样式 - 考虑左侧行程面板的居中显示 */
+#input-panel {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: 800px !important; /* 固定宽度，使用!important确保生效 */
+    max-width: 800px !important; /* 最大宽度与宽度一致 */
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 25px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.input-container {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+}
+
+.button-container {
+    display: flex;
+    align-items: center;
+    margin-left: 8px;
+}
+
+/* AI搜索按钮样式 */
+.ai-search-btn {
+    background: #34C759;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.3s ease;
+    margin-right: 8px;
+}
+
+.ai-search-btn:hover {
+    background: #28A745;
+    transform: scale(1.05);
+}
+
+.ai-search-btn:active {
+    transform: scale(0.95);
+}
+
+.ai-search-btn.loading {
+    background: #FF9500;
+    animation: spin 1s linear infinite;
+}
+
+/* AI回复对话框样式 */
+.ai-response-dialog {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 500px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    z-index: 1002;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.ai-response-dialog.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.ai-response-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.ai-response-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+
+.ai-response-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #999;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.ai-response-close:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.ai-response-content {
+    font-size: 16px;
+    line-height: 1.6;
+    color: #333;
+    white-space: pre-wrap;
+}
+
+.ai-response-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: #666;
+}
+
+.ai-response-loading .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-top: 2px solid #007AFF;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+}
+
+#search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 12px 16px;
+    font-size: 16px;
+    background: transparent;
+    color: #333;
+}
+
+#search-input::placeholder {
+    color: #999;
+}
+
+.voice-container {
+    position: relative;
+    margin-left: 8px;
+}
+
+.voice-btn {
+    background: #007AFF;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.voice-btn:hover {
+    background: #0056CC;
+    transform: scale(1.05);
+}
+
+.voice-btn:active {
+    transform: scale(0.95);
+}
+
+.voice-btn.listening {
+    background: #FF3B30;
+    animation: pulse 1s infinite;
+    box-shadow: 0 0 15px rgba(255, 59, 48, 0.7);
+}
+
+.voice-btn:active {
+    background: #FF6B60;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* 录音时长提示 */
+.recording-indicator {
+    position: absolute;
+    top: -30px;
+    right: 0;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1001;
+}
+
+/* 长按提示 */
+.voice-hint {
+    position: absolute;
+    top: -50px;
+    right: 0;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1001;
+}
+
+.voice-hint.visible {
+    opacity: 1;
+}
+
+/* 错误提示 */
+.error-toast {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+.error-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-10px);
+}
+
+/* 成功提示 */
+.success-toast {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+.success-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-10px);
+}
+
+/* 左侧行程安排面板样式 */
+#schedule-panel {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 350px;
+    height: calc(100% - 40px);
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* 添加调试样式确保面板可见 */
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.schedule-header {
+    padding: 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.schedule-header h3 {
+    margin: 0 0 15px 0;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.day-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.day-selector label {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+#day-select {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+}
+
+#day-select option {
+    background: #667eea;
+    color: white;
+}
+
+.schedule-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.day-schedule {
+    display: none;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+.day-schedule.active {
+    display: block;
+}
+
+.day-schedule h4 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 16px;
+    font-weight: bold;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 8px;
+}
+
+.schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.schedule-item {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+    padding: 15px;
+    border-left: 4px solid #667eea;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.schedule-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.time {
+    font-size: 14px;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 5px;
+}
+
+.place {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.description {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.4;
+}
+
+/* 路径箭头样式 */
+.route-arrow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0;
+    position: relative;
+}
+
+.route-arrow-button {
+    background: #007AFF;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.route-arrow-button:hover {
+    background: #0056CC;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+}
+
+.route-arrow-button:active {
+    transform: translateY(0);
+}
+
+.route-arrow-button.loading {
+    background: #FF9500;
+    animation: spin 1s linear infinite;
+}
+
+.route-arrow-icon {
+    font-size: 14px;
+    transition: transform 0.3s ease;
+}
+
+.route-arrow-button:hover .route-arrow-icon {
+    transform: translateX(2px);
+}
+
+/* 路径规划结果面板 */
+.route-plan-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 300px;
+    max-height: 400px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    z-index: 1001;
+    padding: 0;
+    overflow: hidden;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+}
+
+.route-plan-panel.visible {
+    transform: translateX(0);
+}
+
+.route-plan-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #007AFF 0%, #0056CC 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.route-plan-title {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.route-plan-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.route-plan-close:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.route-plan-content {
+    padding: 15px 20px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.route-plan-section {
+    margin-bottom: 15px;
+}
+
+.route-plan-section:last-child {
+    margin-bottom: 0;
+}
+
+.route-plan-section-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.route-plan-info {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.4;
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    border-left: 3px solid #007AFF;
+}
+
+.route-plan-steps {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.route-plan-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.route-plan-step:last-child {
+    border-bottom: none;
+}
+
+.route-plan-step-icon {
+    color: #007AFF;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.route-plan-step-text {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.3;
+}
+
+/* 地图上的路径样式 */
+.route-polyline {
+    stroke: #007AFF;
+    stroke-width: 6;
+    stroke-opacity: 0.8;
+    fill: none;
+}
+
+.route-start-marker {
+    background: #34C759;
+    border: 2px solid white;
+}
+
+.route-end-marker {
+    background: #FF3B30;
+    border: 2px solid white;
+}
+
+/* 路径箭头样式 */
+.route-arrow {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0;
+    position: relative;
+}
+
+.route-arrow-button {
+    background: #007AFF;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+}
+
+.route-arrow-button:hover {
+    background: #0056CC;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+}
+
+.route-arrow-button:active {
+    transform: translateY(0);
+}
+
+.route-arrow-button.loading {
+    background: #FF9500;
+    animation: spin 1s linear infinite;
+}
+
+.route-arrow-icon {
+    font-size: 14px;
+    transition: transform 0.3s ease;
+}
+
+.route-arrow-button:hover .route-arrow-icon {
+    transform: translateX(2px);
+}
+
+/* 路径规划结果面板 */
+.route-plan-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 300px;
+    max-height: 400px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    z-index: 1001;
+    padding: 0;
+    overflow: hidden;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+}
+
+.route-plan-panel.visible {
+    transform: translateX(0);
+}
+
+.route-plan-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #007AFF 0%, #0056CC 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.route-plan-title {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.route-plan-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.route-plan-close:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.route-plan-content {
+    padding: 15px 20px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.route-plan-section {
+    margin-bottom: 15px;
+}
+
+.route-plan-section:last-child {
+    margin-bottom: 0;
+}
+
+.route-plan-section-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.route-plan-info {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.4;
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    border-left: 3px solid #007AFF;
+}
+
+.route-plan-steps {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.route-plan-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.route-plan-step:last-child {
+    border-bottom: none;
+}
+
+.route-plan-step-icon {
+    color: #007AFF;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.route-plan-step-text {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.3;
+}
+
+/* 地图上的路径样式 */
+.route-polyline {
+    stroke: #007AFF;
+    stroke-width: 6;
+    stroke-opacity: 0.8;
+    fill: none;
+}
+
+.route-start-marker {
+    background: #34C759;
+    border: 2px solid white;
+}
+
+.route-end-marker {
+    background: #FF3B30;
+    border: 2px solid white;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+
+/* 加载状态样式 */
+.schedule-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 地图样式调整 */
+#map {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}

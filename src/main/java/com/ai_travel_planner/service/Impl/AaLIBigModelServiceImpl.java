@@ -13,6 +13,7 @@ import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.protocol.Protocol;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -29,6 +30,9 @@ public class AaLIBigModelServiceImpl implements AaLIBigModelService {
     
     @Autowired
     private ContentSplit contentSplit;
+    
+    @Value("${alibaba.api.key}")
+    private String alibabaApiKey;
     
     /**
      * 调用AI模型生成回复
@@ -68,8 +72,8 @@ public class AaLIBigModelServiceImpl implements AaLIBigModelService {
                 .build();
         
         GenerationParam param = GenerationParam.builder()
-                // 若没有配置环境变量，请用百炼API Key将下行替换为：.apiKey("sk-xxx")
-                .apiKey(System.getenv("DASHSCOPE_API_KEY"))
+                // 从application.properties中获取API密钥
+                .apiKey(alibabaApiKey)
                 .model("qwen-plus")
                 .messages(Arrays.asList(systemMsg, userMsg))
                 .resultFormat(GenerationParam.ResultFormat.MESSAGE)

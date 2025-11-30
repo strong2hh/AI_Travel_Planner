@@ -1,0 +1,28 @@
+travel:
+  jwt:
+    admin-secret-key: AI_Travel
+    admin-ttl: 720000000
+    admin-token-name: token
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/AI_Traveller?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8
+    username: root
+    password: 123456
+
+amap:
+  api-key: efeaef9995fe79bc8865cab2fd85931b
+  security-js-code: 2c76100fec407d17cf3d886d503b85c7
+  center: 116.397428,39.90923
+  zoom: 12
+  style: normal
+  enable-geolocation: true
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.ai_travel_planner.entity
+  configuration:
+    #驼峰命名
+    map-underscore-to-camel-case: true
+

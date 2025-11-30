@@ -1,4 +1,5 @@
-// 简化版地图应用主逻辑
+const BACKEND_BASE_URL = 'http://localhost:8080';
+
 class MapApp {
     constructor() {
         this.map = null;
@@ -57,49 +58,47 @@ class MapApp {
     // 加载配置文件
     async loadConfig() {
         try {
-            // 从后端API获取配置
-            const response = await fetch('/api/map/config');
-            if (!response.ok) throw new Error('配置API加载失败');
-            
-            const configData = await response.json();
-            
-            // 输出获取到的配置信息，用于调试
-            console.log('=== 地图配置信息 ===');
-            console.log('中心点:', configData.center);
-            console.log('缩放级别:', configData.zoom);
-            console.log('地图样式:', configData.style);
-            console.log('定位功能:', configData.enableGeolocation);
-            if (configData.warning) {
-                console.warn('配置警告:', configData.warning);
-            }
-            console.log('====================');
-            
-            // 转换配置格式以匹配原有结构
-            const config = {
-                apiKey: configData.apiKey || 'YOUR_API_KEY',
-                securityJsCode: configData.securityJsCode || null, // 添加安全密钥
-                center: configData.center || '116.397428,39.90923',
-                zoom: configData.zoom || '12',
-                style: configData.style || 'normal',
-                enableGeolocation: configData.enableGeolocation !== undefined ? configData.enableGeolocation : true
+            const token = localStorage.getItem('employee_token');
+
+            // 构造请求头
+            const headers = {
+                'token': token
             };
-            
-            // 如果有警告信息，显示给用户
+
+            // 步骤 2: 发起请求时携带 Authorization 头
+            const response = await fetch(`${BACKEND_BASE_URL}/api/map/config`, {
+                method: 'GET',
+                // ★★★ 携带自定义 Headers ★★★
+                headers: headers
+            });
+
+            if (!response.ok) {
+                // 如果后端返回 401/403，会抛出错误
+                throw new Error(`配置API加载失败，状态码: ${response.status}`);
+            }
+
+            const configData = await response.json();
+
+            const config = {
+                // ★★★ 必须从后端获取的敏感信息 ★★★
+                apiKey: configData.apiKey,
+                securityJsCode: configData.securityJsCode,
+
+                // ★★★ 前端硬编码的配置信息 (不再依赖后端返回) ★★★
+                center: '116.397428,39.90923', // 对应 amap.center
+                zoom: '12',                      // 对应 amap.zoom
+                style: 'normal',                 // 对应 amap.style
+                enableGeolocation: true          // 对应 amap.enable-geolocation
+            };
+
+            // 如果后端有警告信息，仍然显示
             if (configData.warning) {
                 console.warn(configData.warning);
             }
-            
+
             return config;
         } catch (error) {
             console.error('配置加载失败:', error);
-            // 使用默认配置
-            return {
-                apiKey: 'YOUR_API_KEY',
-                center: '116.397428,39.90923',
-                zoom: '12',
-                style: 'normal',
-                enableGeolocation: true
-            };
         }
     }
 
@@ -119,8 +118,8 @@ class MapApp {
             const apiKey = this.config.apiKey;
             
             // 检查是否为默认密钥或未配置
-            if (!apiKey || apiKey === 'YOUR_API_KEY') {
-                console.warn('⚠ 使用默认API密钥，可能需要配置有效的API密钥');
+            if (!apiKey) {
+                console.warn('⚠ 需要配置有效的API密钥');
                 // 显示更详细的错误信息
                 this.showError('地图API密钥未配置，请检查application.properties中的amap.api-key设置');
             }
@@ -1110,13 +1109,13 @@ class RoutePlanner {
             }
             
             // 获取API密钥和安全密钥
-            const apiKey = this.mapApp.config?.apiKey || 'YOUR_API_KEY';
+            const apiKey = this.mapApp.config?.apiKey;
             const securityJsCode = this.mapApp.config?.securityJsCode;
             
 
             
             // 如果API密钥无效，直接返回错误
-            if (!apiKey || apiKey === 'YOUR_API_KEY') {
+            if (!apiKey) {
                 reject(new Error('请配置有效的高德地图API密钥'));
                 return;
             }

@@ -1,0 +1,171 @@
+body {
+    font-family: 'Noto Sans SC', sans-serif;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh; /* 确保占据整个视口高度 */
+    background: linear-gradient(135deg, #7c4dff, #4a148c); /* 紫色渐变背景 */
+    color: #333; /* 默认字体颜色 */
+    overflow: hidden; /* 防止滚动条 */
+}
+
+.login-container {
+    padding: 20px; /* 增加外部内边距 */
+    /* 移除固定宽度，使用 max-width 限制宽度 */
+    max-width: 480px; /* 增加最大宽度，让表单更宽敞 */
+    width: 90%; /* 在小屏幕上自适应 */
+    background: rgba(255, 255, 255, 0.95); /* 半透明白色背景 */
+    border-radius: 20px; /* 更大的圆角 */
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2); /* 更深更柔和的阴影 */
+    backdrop-filter: blur(10px); /* 磨砂玻璃效果 */
+    text-align: center;
+}
+
+.login-header {
+    margin-bottom: 30px; /* 增加底部间距 */
+}
+
+.login-header h2 {
+    font-size: 32px; /* 标题字号更大 */
+    font-weight: 700; /* 更粗的字重 */
+    color: #4a148c; /* 深紫色标题 */
+    margin-bottom: 8px; /* 标题与副标题间距 */
+}
+
+.login-header p {
+    font-size: 16px; /* 副标题字号 */
+    color: #666; /* 灰色副标题 */
+}
+
+.input-group {
+    margin-bottom: 20px; /* 增加输入组间距 */
+    text-align: left; /* 标签和输入框左对齐 */
+}
+
+.input-group label {
+    display: block; /* 标签独立一行 */
+    margin-bottom: 8px; /* 标签与输入框间距 */
+    font-size: 15px;
+    font-weight: 500;
+    color: #4a148c; /* 标签颜色 */
+}
+
+.input-group input {
+    width: 100%;
+    padding: 14px 18px; /* 增加内边距 */
+    border: 1px solid #ccc;
+    border-radius: 10px; /* 圆角更大 */
+    font-size: 16px; /* 输入框字号 */
+    color: #333;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    box-sizing: border-box; /* 确保 padding 不增加宽度 */
+}
+
+.input-group input:focus {
+    border-color: #7c4dff; /* 聚焦时边框颜色 */
+    box-shadow: 0 0 0 3px rgba(124, 77, 255, 0.2); /* 聚焦时柔和阴影 */
+    outline: none; /* 移除默认轮廓 */
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 15px; /* 增加内边距 */
+    background: linear-gradient(45deg, #7c4dff, #4a148c); /* 按钮渐变色 */
+    color: white;
+    border: none;
+    border-radius: 10px; /* 按钮圆角 */
+    font-size: 18px; /* 按钮字号 */
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* 按钮阴影 */
+}
+
+.submit-btn:hover {
+    background: linear-gradient(45deg, #4a148c, #7c4dff); /* 悬停时渐变反转 */
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); /* 悬停时阴影更深 */
+    transform: translateY(-2px); /* 轻微上浮效果 */
+}
+
+.submit-btn:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.toggle-box {
+    margin-top: 25px; /* 增加与按钮的间距 */
+    text-align: center;
+    font-size: 15px;
+    color: #888; /* 稍浅的文字颜色 */
+}
+
+.toggle-box a {
+    color: #7c4dff; /* 链接颜色与主题色一致 */
+    text-decoration: none;
+    font-weight: 600;
+    margin-left: 5px;
+    cursor: pointer;
+    transition: color 0.2s, text-decoration 0.2s;
+}
+
+.toggle-box a:hover {
+    color: #4a148c; /* 悬停时深紫色 */
+    text-decoration: underline;
+}
+
+/* === Toast 提示框样式 === */
+.toast {
+    visibility: hidden; /* 默认隐藏 */
+    min-width: 250px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 8px;
+    padding: 16px;
+    position: fixed;
+    z-index: 1000;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 30px; /* 距离底部 */
+    font-size: 16px;
+    opacity: 0;
+    transition: visibility 0s, opacity 0.5s ease-in-out;
+}
+
+.toast.show {
+    visibility: visible; /* 显示 */
+    opacity: 1;
+}
+
+.toast.success {
+    background-color: #4CAF50; /* 绿色 */
+}
+
+.toast.error {
+    background-color: #f44336; /* 红色 */
+}
+
+/* 媒体查询：适配小屏幕 */
+@media (max-width: 600px) {
+    .login-container {
+        padding: 25px;
+        width: 95%;
+        border-radius: 15px;
+    }
+    .login-header h2 {
+        font-size: 28px;
+    }
+    .login-header p {
+        font-size: 14px;
+    }
+    .input-group input, .submit-btn {
+        padding: 12px 15px;
+        font-size: 16px;
+    }
+    .toggle-box {
+        font-size: 14px;
+    }
+}

@@ -122,19 +122,6 @@ public class VoiceServiceImpl implements VoiceRecognitionService, InitializingBe
             }
 
             System.out.println("处理后的PCM音频长度: " + processedAudio.length + "字节");
-            
-            // 诊断音频数据
-            diagnoseAudioData(processedAudio);
-
-            // 如果诊断显示音频数据有问题，使用测试音频
-            if (isAudioDataProblematic(processedAudio)) {
-                System.out.println("检测到音频数据问题，使用标准PCM测试音频");
-                processedAudio = generateTestPcm();
-                System.out.println("使用测试音频，长度: " + processedAudio.length + "字节");
-            }
-            
-            // 导出转换后的PCM音频文件到指定目录
-            exportPcmToFile(processedAudio);
 
             return callWebSocketAsrApi(apiKey, apiSecret, appId, new java.io.ByteArrayInputStream(processedAudio));
 
@@ -1330,141 +1317,7 @@ public class VoiceServiceImpl implements VoiceRecognitionService, InitializingBe
         log.info("=== 诊断完成 ===");
     }
 
-    /**
-     * 导出PCM音频文件到指定目录
-     */
-    private void exportPcmToFile(byte[] pcmData) {
-        try {
-            // 创建导出目录（如果不存在）
-            String exportPath = "C:\\Users\\Admin\\Downloads";
-            java.io.File exportDir = new java.io.File(exportPath);
-            if (!exportDir.exists()) {
-                exportDir.mkdirs();
-            }
-            
-            // 生成带时间戳的文件名
-            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss");
-            String timestamp = sdf.format(new java.util.Date());
-            String fileName = "converted_pcm_" + timestamp + ".raw";
-            java.io.File outputFile = new java.io.File(exportDir, fileName);
-            
-            // 写入PCM数据
-            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outputFile)) {
-                fos.write(pcmData);
-                System.out.println("PCM音频文件已导出到: " + outputFile.getAbsolutePath());
-                System.out.println("文件大小: " + pcmData.length + " 字节");
-                
-                // 生成对应的WAV文件（添加PCM头部信息，便于播放）
-                String wavFileName = "converted_pcm_" + timestamp + ".wav";
-                java.io.File wavFile = new java.io.File(exportDir, wavFileName);
-                generateWavFile(pcmData, wavFile);
-                System.out.println("WAV文件已导出到: " + wavFile.getAbsolutePath());
-            }
-        } catch (Exception e) {
-            System.err.println("导出PCM文件失败: " + e.getMessage());
-        }
-    }
 
-    /**
-     * 生成WAV文件（添加头部到PCM数据）
-     */
-    private void generateWavFile(byte[] pcmData, java.io.File wavFile) {
-        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(wavFile)) {
-            // WAV文件头部（44字节）
-            byte[] header = new byte[44];
-            
-            // RIFF头部
-            System.arraycopy("RIFF".getBytes(), 0, header, 0, 4);
-            
-            // 文件大小（不包括前8字节）
-            int fileSize = pcmData.length + 44 - 8;
-            header[4] = (byte)(fileSize & 0xFF);
-            header[5] = (byte)((fileSize >> 8) & 0xFF);
-            header[6] = (byte)((fileSize >> 16) & 0xFF);
-            header[7] = (byte)((fileSize >> 24) & 0xFF);
-            
-            // WAVE标识
-            System.arraycopy("WAVE".getBytes(), 0, header, 8, 4);
-            
-            // fmt子块
-            System.arraycopy("fmt ".getBytes(), 0, header, 12, 4);
-            
-            // fmt子块大小（16字节）
-            header[16] = 16;
-            
-            // 音频格式（PCM = 1）
-            header[20] = 1;
-            
-            // 声道数（单声道 = 1）
-            header[22] = CHANNELS;
-            
-            // 采样率（16kHz）
-            header[24] = (byte)(SAMPLE_RATE & 0xFF);
-            header[25] = (byte)((SAMPLE_RATE >> 8) & 0xFF);
-            header[26] = (byte)((SAMPLE_RATE >> 16) & 0xFF);
-            header[27] = (byte)((SAMPLE_RATE >> 24) & 0xFF);
-            
-            // 字节率（采样率 * 声道数 * 位深度/8）
-            int byteRate = SAMPLE_RATE * CHANNELS * BIT_DEPTH / 8;
-            header[28] = (byte)(byteRate & 0xFF);
-            header[29] = (byte)((byteRate >> 8) & 0xFF);
-            header[30] = (byte)((byteRate >> 16) & 0xFF);
-            header[31] = (byte)((byteRate >> 24) & 0xFF);
-            
-            // 块对齐（声道数 * 位深度/8）
-            header[32] = (byte)(CHANNELS * BIT_DEPTH / 8);
-            
-            // 位深度（16位）
-            header[34] = BIT_DEPTH;
-            
-            // data子块
-            System.arraycopy("data".getBytes(), 0, header, 36, 4);
-            
-            // 数据大小
-            header[40] = (byte)(pcmData.length & 0xFF);
-            header[41] = (byte)((pcmData.length >> 8) & 0xFF);
-            header[42] = (byte)((pcmData.length >> 16) & 0xFF);
-            header[43] = (byte)((pcmData.length >> 24) & 0xFF);
-            
-            // 写入头部
-            fos.write(header);
-            
-            // 写入PCM数据
-            fos.write(pcmData);
-        } catch (Exception e) {
-            System.err.println("生成WAV文件失败: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 生成标准PCM格式的测试音频
-     * 当原始音频无法正确转换时使用
-     */
-    private byte[] generateTestPcm() {
-        System.out.println("生成标准PCM测试音频（1秒正弦波）");
-        
-        // 生成1秒的16kHz、16位、单声道PCM数据
-        int samplesPerSecond = SAMPLE_RATE;
-        int bytesPerSample = BIT_DEPTH / 8;
-        int totalBytes = samplesPerSecond * bytesPerSample;
-        byte[] pcmData = new byte[totalBytes];
-        
-        // 生成440Hz正弦波
-        for (int i = 0; i < samplesPerSecond; i++) {
-            double time = i / (double)SAMPLE_RATE;
-            double frequency = 440; // A4音符
-            double amplitude = 0.5; // 50%音量
-            
-            double value = amplitude * Math.sin(2 * Math.PI * frequency * time);
-            short shortValue = (short)(value * Short.MAX_VALUE);
-            
-            int byteIndex = i * bytesPerSample;
-            pcmData[byteIndex] = (byte)(shortValue & 0xFF);
-            pcmData[byteIndex + 1] = (byte)((shortValue >> 8) & 0xFF);
-        }
-        
-        return pcmData;
-    }
 
     /**
      * 检查音频数据是否有问题
@@ -1568,8 +1421,8 @@ public class VoiceServiceImpl implements VoiceRecognitionService, InitializingBe
                 processedAudio = audioConverter.processAudioToPcm(freshStream);
             } catch (Exception e) {
                 System.err.println("M4A音频转换失败: " + e.getMessage());
-                System.out.println("使用测试音频");
-                processedAudio = generateTestPcm();
+                System.out.println("音频转换失败，使用空数组");
+                processedAudio = new byte[0];
             }
             
             if (processedAudio.length == 0) {
@@ -1577,12 +1430,6 @@ public class VoiceServiceImpl implements VoiceRecognitionService, InitializingBe
             }
 
             System.out.println("处理后的PCM音频长度: " + processedAudio.length + "字节");
-            
-            // 详细分析转换后的音频数据
-            analyzeConvertedAudio(processedAudio);
-            
-            // 导出转换后的PCM音频文件到指定目录
-            exportPcmToFile(processedAudio);
 
             // 调用科大讯飞API
             String result = callWebSocketAsrApi(apiKey, apiSecret, appId, new java.io.ByteArrayInputStream(processedAudio));
@@ -1745,16 +1592,11 @@ public class VoiceServiceImpl implements VoiceRecognitionService, InitializingBe
                 // 分析转换结果
                 analyzeConvertedAudio(convertedPcm);
                 
-                // 导出转换结果
-                exportPcmToFile(convertedPcm);
-                System.out.println("PCM文件已导出到: C:\\Users\\Admin\\Downloads");
-                
                 String result = "文件大小: " + audioData.length + "字节\n" +
                                 "WAV格式: " + isWav + "\n" +
                                 "WebM格式: " + isWebm + "\n" +
                                 "M4A格式: " + isM4a + "\n" +
-                                "PCM转换成功: " + convertedPcm.length + "字节\n" +
-                                "PCM文件已导出至C:\\Users\\Admin\\Downloads";
+                                "PCM转换成功: " + convertedPcm.length + "字节";
                 
                 return result;
             } else {

@@ -1,7 +1,10 @@
 package com.ai_travel_planner.controller;
 
+import com.ai_travel_planner.properities.AmapProperities;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -11,36 +14,11 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/map")
+@CrossOrigin(origins = "*")
 public class MapController {
 
-    @Value("${amap.api-key:#{null}}")
-    private String apiKey;
-    
-    @Value("${amap.security-js-code:#{null}}")
-    private String securityJsCode;
-    
-    @Value("${amap.center:116.397428,39.90923}")
-    private String center;
-    
-    @Value("${amap.zoom:12}")
-    private String zoom;
-    
-    @Value("${amap.style:normal}")
-    private String style;
-    
-    @Value("${amap.enable-geolocation:true}")
-    private String enableGeolocation;
-    
-    @GetMapping("/")
-    public String index() {
-        return "forward:/static/MAP/index.html";
-    }
-    
-    @GetMapping("/map")
-    public String map() {
-        return "forward:/static/MAP/index.html";
-    }
-    
+    @Autowired
+    private AmapProperities amapProperities;
     /**
      * 获取地图配置信息
      */
@@ -49,20 +27,14 @@ public class MapController {
         Map<String, Object> config = new HashMap<>();
         
         // 检查API密钥是否配置
-        if (apiKey == null || apiKey.trim().isEmpty()) {
+        if (amapProperities.getApiKey() == null || amapProperities.getApiKey().trim().isEmpty()) {
             config.put("apiKey", "YOUR_API_KEY");
             config.put("warning", "请配置amap.api-key参数");
         } else {
-            config.put("apiKey", apiKey);
+            config.put("apiKey", amapProperities.getApiKey());
         }
-        
         // 添加安全密钥
-        config.put("securityJsCode", securityJsCode);
-        
-        config.put("center", center);
-        config.put("zoom", zoom);
-        config.put("style", style);
-        config.put("enableGeolocation", Boolean.parseBoolean(enableGeolocation));
+        config.put("securityJsCode", amapProperities.getApiSecret());
         
         return ResponseEntity.ok(config);
     }
@@ -74,7 +46,9 @@ public class MapController {
     public ResponseEntity<Map<String, Object>> getMapStatus() {
         Map<String, Object> status = new HashMap<>();
         
-        boolean apiKeyConfigured = apiKey != null && !apiKey.trim().isEmpty() && !apiKey.equals("YOUR_API_KEY");
+        boolean apiKeyConfigured = amapProperities.getApiKey() != null &&
+                !amapProperities.getApiKey().trim().isEmpty() &&
+                !amapProperities.getApiKey().equals("YOUR_API_KEY");
         boolean serviceAvailable = apiKeyConfigured;
         
         status.put("serviceAvailable", serviceAvailable);

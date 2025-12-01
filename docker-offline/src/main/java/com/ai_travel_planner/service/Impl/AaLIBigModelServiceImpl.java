@@ -1,8 +1,6 @@
 package com.ai_travel_planner.service.Impl;
 
 import com.ai_travel_planner.service.AaLIBigModelService;
-import com.ai_travel_planner.service.ContentSplit;
-import com.ai_travel_planner.service.ContentSplit.TimePlacePair;
 import com.alibaba.dashscope.aigc.generation.Generation;
 import com.alibaba.dashscope.aigc.generation.GenerationParam;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;

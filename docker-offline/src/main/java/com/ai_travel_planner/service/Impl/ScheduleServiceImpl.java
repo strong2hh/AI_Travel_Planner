@@ -1,7 +1,6 @@
 package com.ai_travel_planner.service.Impl;
 
 import com.ai_travel_planner.service.ScheduleService;
-import com.ai_travel_planner.service.ContentSplit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

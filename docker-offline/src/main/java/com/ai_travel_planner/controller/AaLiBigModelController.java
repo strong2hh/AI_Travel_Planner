@@ -1,7 +1,6 @@
 package com.ai_travel_planner.controller;
 
 import com.ai_travel_planner.service.AaLIBigModelService;
-import com.ai_travel_planner.service.ContentSplit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

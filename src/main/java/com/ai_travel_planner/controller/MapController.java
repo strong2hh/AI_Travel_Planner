@@ -1,6 +1,7 @@
 package com.ai_travel_planner.controller;
 
 import com.ai_travel_planner.properities.AmapProperities;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/map")
 @CrossOrigin(origins = "*")
+@Slf4j
 public class MapController {
 
     @Autowired
@@ -24,6 +26,7 @@ public class MapController {
      */
     @GetMapping("/config")
     public ResponseEntity<Map<String, Object>> getMapConfig() {
+        log.info("获取地图配置密钥");
         Map<String, Object> config = new HashMap<>();
         
         // 检查API密钥是否配置

@@ -8,18 +8,43 @@
             keyColumn="activity_id">
 
         INSERT INTO activity (
-            user_id,          day_id, day,
+            user_id,schedule_id, day,
             place,
             start_time,
             end_time,
             description
         ) VALUES (
-                     #{userId},        #{dayId}, #{day},
+                     #{userId},        #{scheduleId}, #{day},
                      #{place},
                      #{startTime},
                      #{endTime},
                      #{description}
                  )
     </insert>
+    <select id="getActivityByDay" resultType="com.ai_travel_planner.entity.Activity">
+        SELECT
+            activity_id,
+            schedule_id,
+            user_id,
+            place,
+            description,
+            start_time,
+            end_time,
+            day
+        FROM
+            activity
+        WHERE
+          -- 1. 匹配行程主键 ID
+            schedule_id = #{schedule.scheduleId}
+          AND
+          -- 2. 匹配用户 ID
+            user_id = #{schedule.userId}
+          AND
+          -- 3. 匹配行程中的天数
+            day = #{day}
+        ORDER BY
+            -- 4. 按照开始时间顺序排列 (升序)
+            start_time ASC
+    </select>
 
 </mapper>

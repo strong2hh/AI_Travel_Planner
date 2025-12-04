@@ -22,7 +22,7 @@ import java.util.LinkedHashMap;
  * 处理前端请求，调用阿里云大模型服务
  */
 @RestController
-@RequestMapping("/api/ai")
+@RequestMapping("/ai")
 @CrossOrigin(origins = "*")
 @Slf4j
 public class LLMController {

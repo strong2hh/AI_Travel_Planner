@@ -5,6 +5,7 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -14,6 +15,8 @@ public class LLMConfig {
     private final String DEEPSEEK_MODEL = "deepseek-v3";
     private final String QWEN_MODEL = "qwen-plus";
 
+    @Value("${spring.ai.dashscope.api-key}")
+    private String LLMApiKey;
     /**
      * deepseek-ChatModel
      * @return
@@ -22,7 +25,7 @@ public class LLMConfig {
     public ChatModel deepseekChatModel() {
         return DashScopeChatModel.builder()
                 .dashScopeApi(DashScopeApi.builder()
-                        .apiKey(System.getenv("DASHSCOPE_API_KEY"))
+                        .apiKey(LLMApiKey)
                         .build())
                 .defaultOptions(DashScopeChatOptions.builder()
                         .withModel(DEEPSEEK_MODEL)
@@ -38,7 +41,7 @@ public class LLMConfig {
     public ChatModel qwenChatModel() {
         return DashScopeChatModel.builder()
                 .dashScopeApi(DashScopeApi.builder()
-                        .apiKey(System.getenv("DASHSCOPE_API_KEY"))
+                        .apiKey(LLMApiKey)
                         .build())
                 .defaultOptions(DashScopeChatOptions.builder()
                         .withModel(QWEN_MODEL)

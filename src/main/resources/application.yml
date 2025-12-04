@@ -7,22 +7,57 @@ travel:
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/AI_Traveller?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8
+    url: jdbc:mysql://localhost:3306/your_database?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8
     username: root
-    password: 123456
+    password: password
+  application:
+    name: AI_Travel_Planner
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  web:
+    resources:
+      static-locations: classpath:/static/
+  mvc:
+    view:
+      prefix: classpath:/templates/
+      suffix: .html
+  ai:
+    dashscope:
+      api-key: your-api-key
 
 amap:
-  api-key: efeaef9995fe79bc8865cab2fd85931b
-  security-js-code: 2c76100fec407d17cf3d886d503b85c7
-  center: 116.397428,39.90923
-  zoom: 12
-  style: normal
-  enable-geolocation: true
+  api-key: your-api-key
+  api-secret: your-api-secret
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.ai_travel_planner.entity
   configuration:
-    #驼峰命名
     map-underscore-to-camel-case: true
+
+
+## 服务器配置
+server:
+  port: 8080
+
+## 日志配置
+logging:
+  level:
+    # 设置特定包的日志级别
+    com.ai_travel_planner: DEBUG
+  pattern:
+    # console 表示控制台输出格式
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+## 外部服务配置
+# 科大讯飞语音服务配置
+iflytek:
+  voice:
+    app-id: your-app-id
+    api-key: your-api-key
+    api-secret: your-api-secret
 

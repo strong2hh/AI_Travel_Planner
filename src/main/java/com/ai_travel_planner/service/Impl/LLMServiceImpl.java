@@ -2,6 +2,7 @@ package com.ai_travel_planner.service.Impl;
 
 import com.ai_travel_planner.DTO.ScheduleDTO;
 import com.ai_travel_planner.constant.TravelPlannerConstants;
+import com.ai_travel_planner.entity.Schedule;
 import com.ai_travel_planner.result.Result;
 import com.ai_travel_planner.service.LLMService;
 import com.ai_travel_planner.service.ScheduleService;
@@ -63,8 +64,8 @@ public class LLMServiceImpl implements LLMService {
             //测试大模型返回结果是否正常
             log.info("大模型返回结果为：{}" ,modelResponse);
 
-            List<ScheduleDTO> schedules = jsonParserUtil.parseJson(modelResponse);
-            scheduleService.insertSchedule(schedules);
+            ScheduleDTO scheduleDTO = jsonParserUtil.parseJson(modelResponse);
+            scheduleService.insertSchedule(scheduleDTO);
 
             return Result.success(modelResponse);
 

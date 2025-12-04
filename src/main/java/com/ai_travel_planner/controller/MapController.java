@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/map")
+@RequestMapping("/map")
 @CrossOrigin(origins = "*")
 @Slf4j
 public class MapController {
@@ -31,7 +31,6 @@ public class MapController {
         
         // 检查API密钥是否配置
         if (amapProperities.getApiKey() == null || amapProperities.getApiKey().trim().isEmpty()) {
-            config.put("apiKey", "YOUR_API_KEY");
             config.put("warning", "请配置amap.api-key参数");
         } else {
             config.put("apiKey", amapProperities.getApiKey());

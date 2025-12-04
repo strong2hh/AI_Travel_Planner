@@ -1,5 +1,5 @@
 // === 1. 配置后端接口地址 ===
-const BASE_URL = 'http://localhost:8080/admin/employee';
+const BASE_URL = '/api/admin/employee';
 const LOGIN_API = `${BASE_URL}/login`;
 const SIGNUP_API = `${BASE_URL}/signup`; // 注册接口
 

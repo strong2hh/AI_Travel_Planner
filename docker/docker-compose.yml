@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # 1. 数据库服务：MySQL
+  db:
+    image: crpi-ovqmcstndscfksyn.cn-hangzhou.personal.cr.aliyuncs.com/ai_travel_planner123/ai_travel_plannrt_mysql:1.0
+    container_name: ai_travel_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      # ⚠️ 注意：对方要有 init.sql 文件
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3307:3306"
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck: # 健康检查，确保后端在数据库准备好后再启动
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # 2. 后端服务：Java Spring Boot 应用
+  backend:
+
+    image: crpi-ovqmcstndscfksyn.cn-hangzhou.personal.cr.aliyuncs.com/ai_travel_planner123/ai_travel_planner:1.0
+    container_name: ai_travel_backend
+    restart: always
+    environment:
+      # 传递数据库连接信息给 Spring Boot
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/${DB_NAME}?useSSL=false
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      # 其他 Java/Spring Boot 环境变量
+      SPRING_PROFILES_ACTIVE: prod
+    ports:
+      - "8080:8080" # 假设 Spring Boot 运行在 8080 端口
+    depends_on:
+      db:
+        condition: service_healthy # 确保数据库健康检查通过后才启动
+
+  # 3. 前端服务：Nginx 托管静态文件
+  frontend:
+    image: crpi-ovqmcstndscfksyn.cn-hangzhou.personal.cr.aliyuncs.com/ai_travel_planner123/ai_travel_planner_frontand:1.0
+    container_name: ai_travel_frontend
+    restart: always
+    volumes:
+      - ./frontend/static:/usr/share/nginx/html/static:ro
+      # 挂载配置文件
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8088:80"
+
+# 卷定义
+volumes:
+  db_data:

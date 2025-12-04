@@ -15,13 +15,12 @@ import java.util.List;
 @AllArgsConstructor
 public class Schedule {
 
-    private Integer dayId;
+    private Long scheduleId;
 
     private Long userId;
 
     private String theme;
 
-    private Integer day;
+    private Integer dayNumber;
 
-    private List<Activity> activities;
 }

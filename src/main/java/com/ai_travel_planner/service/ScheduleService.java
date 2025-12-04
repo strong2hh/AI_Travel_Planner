@@ -3,14 +3,17 @@ package com.ai_travel_planner.service;
 import com.ai_travel_planner.DTO.ScheduleDTO;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
-
 @Service
 public interface ScheduleService {
     /**
      * 插入日程数据
-     * @param schedules
+     * @param scheduleDTO
      */
-    void insertSchedule(List<ScheduleDTO> schedules);
+    void insertSchedule(ScheduleDTO scheduleDTO);
+
+    /**
+     * 获取最近的一次行程安排数据
+     * @return
+     */
+    ScheduleDTO getSchdule();
 }

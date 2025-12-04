@@ -4,17 +4,35 @@
 
     <insert id="insert" parameterType="com.ai_travel_planner.entity.Schedule"
             useGeneratedKeys="true"
-            keyProperty="dayId"
-            keyColumn="day_id">
+            keyProperty="scheduleId"
+            keyColumn="schedule_id">
 
         INSERT INTO schedule (theme,
             user_id,
-            day
+            day_number
         ) VALUES (
                   #{theme},
                      #{userId},
-                     #{day}
+                     #{dayNumber}
                  )
     </insert>
+    <select id="getLatestSchdule" resultType="com.ai_travel_planner.entity.Schedule"
+            parameterType="java.lang.Long">
+        SELECT
+            -- 返回需要的字段
+            schedule_id,
+            theme,
+            user_id,
+            day_number
+        -- 排除 created_time 和 updated_time
+        FROM
+            schedule
+        WHERE
+            user_id = #{userId}
+        ORDER BY
+            -- 关键：按更新时间倒序排列
+            updated_time DESC
+        LIMIT 1
+    </select>
 
 </mapper>

@@ -17,7 +17,7 @@ public class Activity {
 
     private Long userId;
 
-    private Integer dayId;
+    private Long scheduleId;
 
     private Integer day;
 

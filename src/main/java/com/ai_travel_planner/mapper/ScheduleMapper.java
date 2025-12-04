@@ -8,4 +8,6 @@ import org.apache.ibatis.annotations.Mapper;
 public interface ScheduleMapper {
 
     void insert(Schedule schedule);
+
+    Schedule getLatestSchdule(Long userId);
 }
